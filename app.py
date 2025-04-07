@@ -38,15 +38,24 @@ else:
 st.write("🔍 Unique Values per Feature:")
 st.dataframe(df.nunique().sort_values(ascending=False))
 
-# 📈 Correlation with G3
+# 📈 Correlation with G3 (Updated Visualization)
 st.subheader("3. Attribute Comparison with Final Grade (G3)")
 selected_cols = ['age', 'Medu', 'Fedu', 'traveltime', 'studytime', 'failures', 'absences', 'G1', 'G2', 'G3']
-corr = df[selected_cols].corr()['G3'].sort_values(ascending=False)
-st.bar_chart(corr.drop("G3"))
+corr = df[selected_cols].corr()['G3'].drop("G3").sort_values()
 
-fig, ax = plt.subplots()
-sns.heatmap(df[selected_cols].corr(), annot=True, cmap="coolwarm", ax=ax)
-st.pyplot(fig)
+# 📊 Horizontal Bar Plot for Better Visibility
+fig1, ax1 = plt.subplots(figsize=(8, 5))
+sns.barplot(x=corr.values, y=corr.index, palette="viridis", ax=ax1)
+ax1.set_title("Correlation of Attributes with Final Grade (G3)")
+ax1.set_xlabel("Correlation Coefficient")
+ax1.set_xlim(-1, 1)
+st.pyplot(fig1)
+
+# 🔥 Heatmap for Full Correlation Matrix
+fig2, ax2 = plt.subplots(figsize=(10, 6))
+sns.heatmap(df[selected_cols].corr(), annot=True, cmap="coolwarm", fmt=".2f", ax=ax2)
+ax2.set_title("Correlation Heatmap")
+st.pyplot(fig2)
 
 # 🧠 Model Comparison
 st.subheader("4. Model Accuracy Comparison")
