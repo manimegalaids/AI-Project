@@ -74,12 +74,54 @@ if corr['studytime'] > 0.2:
 # 💬 Chatbot
 st.subheader("5. Ask an AI Bot")
 user_question = st.text_input("Ask anything about student performance...")
-if user_question:
-    if "parent" in user_question.lower():
-        st.write("👩‍🎓 Higher parental education often leads to better student outcomes.")
-    elif "fail" in user_question.lower():
-        st.write("📉 Students with more failures tend to perform worse. Early intervention helps.")
-    elif "study" in user_question.lower():
-        st.write("📖 More study time usually improves final grades.")
+
+def ai_bot_response(query):
+    query = query.lower()
+    
+    if "parent" in query:
+        return (
+            "👩‍🎓 Higher parental education, especially mothers' education, "
+            "has a strong positive impact on student grades. Community-based "
+            "parental literacy programs can help bridge this gap."
+        )
+    elif "fail" in query or "failure" in query:
+        return (
+            "📉 Frequent failures indicate students need timely intervention. "
+            "Tutoring, mentoring, and academic support programs are effective "
+            "in reducing future failure rates and boosting confidence."
+        )
+    elif "study" in query or "study time" in query:
+        return (
+            "📖 Increased study time often correlates with better academic performance. "
+            "Encourage consistent daily study routines and focused learning strategies "
+            "like Pomodoro or spaced repetition."
+        )
+    elif "absent" in query or "absences" in query:
+        return (
+            "🏫 High absences can hurt learning progress. Schools should promote attendance "
+            "through counseling, parental involvement, and incentives for regular attendance."
+        )
+    elif "travel" in query:
+        return (
+            "🚌 Longer travel time might reduce study hours. Providing access to nearby learning "
+            "centers or online learning options can help."
+        )
+    elif "improve" in query or "academic performance" in query:
+        return (
+            "🚀 To improve academic performance:\n"
+            "- Support family education (especially mothers)\n"
+            "- Offer personalized tutoring for struggling students\n"
+            "- Ensure daily study routines\n"
+            "- Reduce student absenteeism\n"
+            "- Provide socio-emotional support\n\n"
+            "✨ Use the dashboard's AI predictions to identify at-risk students early!"
+        )
     else:
-        st.write("🤖 I recommend exploring the dashboard insights for more details.")
+        return (
+            "🤖 I'm here to help! You can ask about factors like parental education, failures, "
+            "study time, or how to improve student grades."
+        )
+
+if user_question:
+    st.write(ai_bot_response(user_question))
+
