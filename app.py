@@ -46,6 +46,9 @@ This section shows the relationship between each feature and the final student g
 - A **Random Forest** model to extract and show feature importances.
 """)
 
+# 🔧 Define selected_cols to avoid NameError
+selected_cols = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
+
 # 1. Lollipop Chart for Correlation with G3
 st.subheader("🔗 Correlation of Attributes with Final Grade (G3)")
 
