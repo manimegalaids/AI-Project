@@ -169,10 +169,33 @@ if user_question:
 # 🎯 Personalized Learning Recommendations
 st.subheader("9. Personalized Learning Path")
 
+with st.form("learning_path_form"):
+    st.markdown("📌 Enter student academic and socio-economic details:")
+    age = st.slider("Age", 15, 22, 17)
+    failures = st.slider("Past Failures", 0, 4, 0)
+    studytime = st.slider("Weekly Study Time (hours)", 1, 4, 2)
+    absences = st.slider("Total Absences", 0, 93, 4)
+    Medu = st.slider("Mother's Education (0-4)", 0, 4, 2)
+    Fedu = st.slider("Father's Education (0-4)", 0, 4, 2)
+    G1 = st.slider("Grade Period 1 (G1)", 0, 20, 10)
+    G2 = st.slider("Grade Period 2 (G2)", 0, 20, 10)
+
+    submitted = st.form_submit_button("🎓 Predict & Recommend")
+
 if submitted:
+    # Prepare input
+    input_data = pd.DataFrame([[age, Medu, Fedu, 1, studytime, failures, absences, G1, G2]], columns=features)
+    input_scaled = MinMaxScaler().fit(X).transform(input_data)
+
+    # Predict final grade
+    model = models[best_model]
+    G3_pred = model.predict(input_scaled)[0]
+    st.success(f"🎯 Predicted Final Grade (G3): {G3_pred:.2f}")
+
+    # 🎯 Personalized Learning Recommendations
     recommendations = []
 
-    if G3 < 10:
+    if G3_pred < 10:
         recommendations.append("🔴 **At-Risk Student**: Personalized tutoring sessions needed with focus on weak concepts from G1 & G2.")
         if failures > 0:
             recommendations.append("❌ Prior failures detected. Recommend academic counseling and regular progress tracking.")
@@ -181,7 +204,7 @@ if submitted:
         if absences > 10:
             recommendations.append("🏫 High absenteeism. Engage with guardians and consider blended/remote learning models.")
 
-    elif G3 < 14:
+    elif G3_pred < 14:
         recommendations.append("🟡 **Average Performer**: Recommend structured self-paced modules and performance goals.")
         if studytime <= 2:
             recommendations.append("📘 Boost study hours using techniques like Pomodoro and spaced repetition.")
