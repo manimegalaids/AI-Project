@@ -165,3 +165,34 @@ def ai_bot_response(query):
 
 if user_question:
     st.write(ai_bot_response(user_question))
+
+# 🎯 Personalized Learning Recommendations
+st.subheader("9. Personalized Learning Path")
+
+if submitted:
+    recommendations = []
+
+    if G3 < 10:
+        recommendations.append("🔴 **At-Risk Student**: Personalized tutoring sessions needed with focus on weak concepts from G1 & G2.")
+        if failures > 0:
+            recommendations.append("❌ Prior failures detected. Recommend academic counseling and regular progress tracking.")
+        if studytime <= 2:
+            recommendations.append("⏱️ Study time is low. Suggest time management coaching and digital learning planners.")
+        if absences > 10:
+            recommendations.append("🏫 High absenteeism. Engage with guardians and consider blended/remote learning models.")
+
+    elif G3 < 14:
+        recommendations.append("🟡 **Average Performer**: Recommend structured self-paced modules and performance goals.")
+        if studytime <= 2:
+            recommendations.append("📘 Boost study hours using techniques like Pomodoro and spaced repetition.")
+        if absences > 5:
+            recommendations.append("🕒 Reduce missed classes by sending automated alerts and reminders.")
+
+    else:
+        recommendations.append("🟢 **High Performer**: Recommend advanced learning paths or gifted programs.")
+        if studytime > 3:
+            recommendations.append("🚀 Encourage participation in competitions or online MOOCs (Coursera, edX).")
+
+    st.markdown("### 🧑‍🏫 Recommended Actions:")
+    for rec in recommendations:
+        st.info(rec)
