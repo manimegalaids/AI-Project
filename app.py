@@ -139,7 +139,7 @@ if submitted:
 
     st.success(f"🎓 Predicted Final Grade (G3): {G3_pred:.2f}")
 
-    # 📌 Personalized Recommendations
+    # 📌 Personalized Academic Recommendations
     recommendations = []
 
     if G3_pred < 10:
@@ -167,6 +167,25 @@ if submitted:
     for rec in recommendations:
         st.info(rec)
 
+    # 📚 AI-Powered Learning Resource Recommender
+    st.markdown("### 📚 Tailored Learning Resources")
+
+    if G3_pred < 10:
+        st.markdown("- [🎥 How to Study Effectively – Science-Based Tips (YouTube)](https://youtu.be/p60rN9JEapg)")
+        st.markdown("- [⏱️ Pomodoro Timer Web Tool](https://pomofocus.io/)")
+        st.markdown("- [📘 Time Management Course – Coursera](https://www.coursera.org/learn/work-smarter-not-harder)")
+        st.markdown("- [📗 Khan Academy – Foundational Skills](https://www.khanacademy.org)")
+        st.markdown("- [🧠 Motivation for Students – TEDx Talk](https://youtu.be/O96fE1E-rf8)")
+
+    elif G3_pred < 14:
+        st.markdown("- [🎓 Study Skills for High School & College – YouTube](https://youtu.be/CPxSzxylRCI)")
+        st.markdown("- [📈 Focus & Productivity Guide – Todoist Blog](https://blog.todoist.com/productivity-methods/)")
+        st.markdown("- [📚 Self-Paced Learning: Study Smarter](https://www.opencollege.info/self-paced-learning/)")
+
+    else:
+        st.markdown("- [🏆 Advanced MOOC: edX – Academic Excellence Courses](https://www.edx.org/learn/study-skills)")
+        st.markdown("- [🎖️ Olympiad/Competition Preparation – Learn More](https://artofproblemsolving.com/)")
+        st.markdown("- [🚀 Research Basics for Students – Google Scholar Guide](https://scholar.google.com/)")
 
 # 💬 Chatbot
 st.subheader("8. Ask an AI Bot")
