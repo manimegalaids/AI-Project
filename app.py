@@ -242,104 +242,53 @@ if submitted:
 
 # 💬 Chatbot
 st.subheader("8. Chat bot")
-import streamlit as st
+
 import openai
 import speech_recognition as sr
 import pyttsx3
+import os
 
-# Initialize OpenAI (Replace with your own key)
-openai.api_key = "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"
+# Set OpenAI key securely
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Set Streamlit page configuration
-st.set_page_config(page_title="AI Dashboard", layout="wide")
-
-# Sidebar page selector
-page = st.sidebar.selectbox("Choose a page", [
-    "Home",
-    "Dataset Preview",
-    "Attribute Analysis",
-    "Model Accuracy Comparison",
-    "AI-Based Recommendations",
-    "Ask AI Bot"
-])
-
-# Chatbot: Session state for conversation memory
+# Initialize session state
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# Voice Recognition Function
+# Function to get AI response
+def get_ai_response(prompt):
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=st.session_state.chat_history + [{"role": "user", "content": prompt}]
+    )
+    return response['choices'][0]['message']['content']
+
+# Text Input for user
+user_input = st.text_input("🗣️ Ask the AI something:")
+
+if user_input:
+    st.session_state.chat_history.append({"role": "user", "content": user_input})
+    ai_response = get_ai_response(user_input)
+    st.session_state.chat_history.append({"role": "assistant", "content": ai_response})
+    st.markdown(f"**AI:** {ai_response}")
 def recognize_voice():
     recognizer = sr.Recognizer()
     with sr.Microphone() as source:
-        st.info("Listening...")
+        st.info("🎤 Listening for 5 seconds...")
         audio = recognizer.listen(source, phrase_time_limit=5)
     try:
         text = recognizer.recognize_google(audio)
-        st.success(f"You said: {text}")
+        st.success(f"Recognized: {text}")
         return text
     except sr.UnknownValueError:
-        st.warning("Sorry, I could not understand audio.")
+        st.error("Sorry, could not understand the audio.")
     except sr.RequestError:
-        st.error("API unavailable")
-    return None
-
-# Text-to-speech function
-def speak(text):
-    engine = pyttsx3.init()
-    engine.say(text)
-    engine.runAndWait()
-
-# Get AI response
-def get_ai_response(prompt):
-    messages = [{"role": "system", "content": "You are an AI academic assistant helping analyze student data and give insights."}]
-    for user, ai in st.session_state.chat_history:
-        messages.append({"role": "user", "content": user})
-        messages.append({"role": "assistant", "content": ai})
-    messages.append({"role": "user", "content": prompt})
-    
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",  # or gpt-4 if available
-        messages=messages,
-        max_tokens=200
-    )
-    answer = response['choices'][0]['message']['content'].strip()
-    return answer
-
-# -------------------------------
-# 🧠 ASK AI BOT PAGE
-# -------------------------------
-if page == "Ask AI Bot":
-    st.title("🤖 Ask the AI Bot")
-    st.write("Get insights and explanations about student academic performance, AI predictions, or socio-economic factors.")
-
-    # Suggested Questions
-    st.markdown("💡 **Try asking:**")
-    st.markdown("- What factors most affect student performance?")
-    st.markdown("- How does parental education influence grades?")
-    st.markdown("- Can AI suggest how to improve a student's performance?")
-    
-    # Input options
-    input_mode = st.radio("Choose input mode:", ["Text", "Voice"])
-    user_input = ""
-
-    if input_mode == "Text":
-        user_input = st.text_input("Type your question:")
-    else:
-        if st.button("🎤 Start Voice Input"):
-            user_input = recognize_voice()
-
-    if user_input:
-        with st.spinner("Thinking..."):
-            response = get_ai_response(user_input)
-            st.session_state.chat_history.append((user_input, response))
-            st.success("Answer:")
-            st.write(response)
-            if st.checkbox("🔊 Read aloud"):
-                speak(response)
-
-    # Display chat history
-    if st.session_state.chat_history:
-        st.markdown("## 🗂️ Chat History")
-        for i, (q, a) in enumerate(reversed(st.session_state.chat_history[-10:]), 1):
-            st.markdown(f"**Q{i}:** {q}")
-            st.markdown(f"**A{i}:** {a}")
+        st.error("API unavailable.")
+    return ""
+if st.button("🎙️ Use Microphone"):
+    voice_input = recognize_voice()
+    if voice_input:
+        st.session_state.chat_history.append({"role": "user", "content": voice_input})
+        ai_response = get_ai_response(voice_input)
+        st.session_state.chat_history.append({"role": "assistant", "content": ai_response})
+        st.markdown(f"**AI:** {ai_response}")
