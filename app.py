@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
+import speech_recognition as sr
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import BayesianRidge
@@ -158,7 +161,7 @@ st.subheader("7. Predict Final Grade & Get Personalized Learning Path")
 with st.form("combined_prediction_form"):
     st.markdown("📌 Enter student academic and socio-economic details:")
     age = st.slider("Age", 15, 22, 17)
-   Medu = st.selectbox("Mother's Education Level", options=[0, 1, 2, 3, 4],
+    Medu = st.selectbox("Mother's Education Level", options=[0, 1, 2, 3, 4],
                     format_func=lambda x: {
                         0: "0 - None",
                         1: "1 - Primary (up to 4th grade)",
@@ -175,7 +178,6 @@ with st.form("combined_prediction_form"):
                         3: "3 - Secondary (High School)",
                         4: "4 - Higher (University)"
                     }[x])
-
     traveltime = st.slider("Travel Time (1=short <15min - 4=long >1hr)", 1, 4, 1)
     studytime = st.slider("Weekly Study Time (1=<2hrs - 4=>10hrs)", 1, 4, 2)
     failures = st.slider("Past Class Failures", 0, 4, 0)
@@ -240,55 +242,75 @@ if submitted:
         st.markdown("- [🎖️ Olympiad/Competition Preparation – Learn More](https://artofproblemsolving.com/)")
         st.markdown("- [🚀 Research Basics for Students – Google Scholar Guide](https://scholar.google.com/)")
 
+
 # 💬 Chatbot
 st.subheader("8. Chat bot")
+# --------------------- Load Local HuggingFace Model ---------------------
+@st.cache_resource
+def load_model():
+    model_name = "distilgpt2"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name)
+    return tokenizer, model
 
-import openai
-import speech_recognition as sr
-import pyttsx3
-import os
+tokenizer, model = load_model()
 
-# Set OpenAI key securely
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# --------------------- Chatbot Logic ---------------------
+def get_local_ai_response(user_input, chat_history=""):
+    input_text = chat_history + f"User: {user_input}\nAI:"
+    input_ids = tokenizer.encode(input_text, return_tensors="pt")
 
-# Initialize session state
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+    with torch.no_grad():
+        output_ids = model.generate(
+            input_ids,
+            max_length=500,
+            pad_token_id=tokenizer.eos_token_id,
+            do_sample=True,
+            temperature=0.7,
+            top_p=0.9,
+            top_k=50
+        )
 
-# Function to get AI response
-def get_ai_response(prompt):
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=st.session_state.chat_history + [{"role": "user", "content": prompt}]
-    )
-    return response['choices'][0]['message']['content']
+    response = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+    ai_reply = response[len(input_text):].strip().split("\n")[0]
+    return ai_reply
 
-# Text Input for user
-user_input = st.text_input("🗣️ Ask the AI something:")
-
-if user_input:
-    st.session_state.chat_history.append({"role": "user", "content": user_input})
-    ai_response = get_ai_response(user_input)
-    st.session_state.chat_history.append({"role": "assistant", "content": ai_response})
-    st.markdown(f"**AI:** {ai_response}")
+# --------------------- Voice Recognition ---------------------
 def recognize_voice():
-    recognizer = sr.Recognizer()
+    r = sr.Recognizer()
     with sr.Microphone() as source:
-        st.info("🎤 Listening for 5 seconds...")
-        audio = recognizer.listen(source, phrase_time_limit=5)
+        st.info("Listening... Speak now!")
+        audio = r.listen(source)
     try:
-        text = recognizer.recognize_google(audio)
-        st.success(f"Recognized: {text}")
+        text = r.recognize_google(audio)
+        st.success(f"You said: {text}")
         return text
     except sr.UnknownValueError:
-        st.error("Sorry, could not understand the audio.")
+        st.error("Sorry, could not understand audio.")
+        return ""
     except sr.RequestError:
-        st.error("API unavailable.")
-    return ""
-if st.button("🎙️ Use Microphone"):
+        st.error("Could not request results from Google Speech Recognition.")
+        return ""
+
+# --------------------- Streamlit UI ---------------------
+st.set_page_config(page_title="Voice Chatbot", page_icon="🧠")
+st.title("🎤 Local Voice Chatbot with Hugging Face 🤖")
+
+chat_history = st.session_state.get("chat_history", "")
+
+# Text input
+user_input = st.text_input("Type your message or use the microphone:")
+
+# Voice input
+if st.button("🎙️ Speak"):
     voice_input = recognize_voice()
     if voice_input:
-        st.session_state.chat_history.append({"role": "user", "content": voice_input})
-        ai_response = get_ai_response(voice_input)
-        st.session_state.chat_history.append({"role": "assistant", "content": ai_response})
-        st.markdown(f"**AI:** {ai_response}")
+        user_input = voice_input
+
+if user_input:
+    st.write(f"🧑 You: {user_input}")
+    ai_reply = get_local_ai_response(user_input, chat_history)
+    st.write(f"🤖 AI: {ai_reply}")
+
+    # Update chat history
+    st.session_state.chat_history = chat_history + f"User: {user_input}\nAI: {ai_reply}\n"
