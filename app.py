@@ -115,25 +115,58 @@ if st.button("📤 Download AI Recommendations"):
     rec_text = "\n\n".join(recommendations)
     st.download_button("📄 Download", rec_text, file_name="ai_recommendations.txt")
 
-# 🎯 Predict Final Grade
-st.subheader("7. Predict a Student's Final Grade (G3)")
-with st.form("prediction_form"):
+# 🎯 Predict Final Grade + Recommend Learning Path
+st.subheader("7. Predict Final Grade & Get Personalized Learning Path")
+
+with st.form("combined_prediction_form"):
+    st.markdown("📌 Enter student academic and socio-economic details:")
     age = st.slider("Age", 15, 22, 17)
     Medu = st.slider("Mother's Education (0-4)", 0, 4, 2)
     Fedu = st.slider("Father's Education (0-4)", 0, 4, 2)
     traveltime = st.slider("Travel Time (1=short <15min - 4=long >1hr)", 1, 4, 1)
-    studytime = st.slider("Study Time (1=<2hrs - 4=>10hrs)", 1, 4, 2)
+    studytime = st.slider("Weekly Study Time (1=<2hrs - 4=>10hrs)", 1, 4, 2)
     failures = st.slider("Past Class Failures", 0, 4, 0)
-    absences = st.slider("Absences", 0, 100, 5)
+    absences = st.slider("Total Absences", 0, 100, 5)
     G1 = st.slider("First Period Grade (G1)", 0, 20, 10)
     G2 = st.slider("Second Period Grade (G2)", 0, 20, 10)
-    submitted = st.form_submit_button("Predict")
+
+    submitted = st.form_submit_button("🎓 Predict & Recommend")
 
 if submitted:
     input_data = pd.DataFrame([[age, Medu, Fedu, traveltime, studytime, failures, absences, G1, G2]], columns=features)
     input_scaled = scaler.transform(input_data)
-    pred_g3 = models[best_model].predict(input_scaled)[0]
-    st.success(f"🎓 Predicted Final Grade (G3): {pred_g3:.2f}")
+    G3_pred = models[best_model].predict(input_scaled)[0]
+
+    st.success(f"🎓 Predicted Final Grade (G3): {G3_pred:.2f}")
+
+    # 📌 Personalized Recommendations
+    recommendations = []
+
+    if G3_pred < 10:
+        recommendations.append("🔴 **At-Risk Student**: Personalized tutoring sessions needed with focus on weak concepts from G1 & G2.")
+        if failures > 0:
+            recommendations.append("❌ Prior failures detected. Recommend academic counseling and regular progress tracking.")
+        if studytime <= 2:
+            recommendations.append("⏱️ Study time is low. Suggest time management coaching and digital learning planners.")
+        if absences > 10:
+            recommendations.append("🏫 High absenteeism. Engage with guardians and consider blended/remote learning models.")
+
+    elif G3_pred < 14:
+        recommendations.append("🟡 **Average Performer**: Recommend structured self-paced modules and performance goals.")
+        if studytime <= 2:
+            recommendations.append("📘 Boost study hours using techniques like Pomodoro and spaced repetition.")
+        if absences > 5:
+            recommendations.append("🕒 Reduce missed classes by sending automated alerts and reminders.")
+
+    else:
+        recommendations.append("🟢 **High Performer**: Recommend advanced learning paths or gifted programs.")
+        if studytime > 3:
+            recommendations.append("🚀 Encourage participation in competitions or online MOOCs (Coursera, edX).")
+
+    st.markdown("### 🧑‍🏫 Recommended Actions:")
+    for rec in recommendations:
+        st.info(rec)
+
 
 # 💬 Chatbot
 st.subheader("8. Ask an AI Bot")
@@ -165,57 +198,3 @@ def ai_bot_response(query):
 
 if user_question:
     st.write(ai_bot_response(user_question))
-
-# 🎯 Personalized Learning Recommendations
-st.subheader("9. Personalized Learning Path")
-
-with st.form("learning_path_form"):
-    st.markdown("📌 Enter student academic and socio-economic details:")
-    age = st.slider("Age", 15, 22, 17)
-    failures = st.slider("Past Failures", 0, 4, 0)
-    studytime = st.slider("Weekly Study Time (hours)", 1, 4, 2)
-    absences = st.slider("Total Absences", 0, 93, 4)
-    Medu = st.slider("Mother's Education (0-4)", 0, 4, 2)
-    Fedu = st.slider("Father's Education (0-4)", 0, 4, 2)
-    G1 = st.slider("Grade Period 1 (G1)", 0, 20, 10)
-    G2 = st.slider("Grade Period 2 (G2)", 0, 20, 10)
-
-    submitted = st.form_submit_button("🎓 Predict & Recommend")
-
-if submitted:
-    # Prepare input
-    input_data = pd.DataFrame([[age, Medu, Fedu, 1, studytime, failures, absences, G1, G2]], columns=features)
-    input_scaled = MinMaxScaler().fit(X).transform(input_data)
-
-    # Predict final grade
-    model = models[best_model]
-    G3_pred = model.predict(input_scaled)[0]
-    st.success(f"🎯 Predicted Final Grade (G3): {G3_pred:.2f}")
-
-    # 🎯 Personalized Learning Recommendations
-    recommendations = []
-
-    if G3_pred < 10:
-        recommendations.append("🔴 **At-Risk Student**: Personalized tutoring sessions needed with focus on weak concepts from G1 & G2.")
-        if failures > 0:
-            recommendations.append("❌ Prior failures detected. Recommend academic counseling and regular progress tracking.")
-        if studytime <= 2:
-            recommendations.append("⏱️ Study time is low. Suggest time management coaching and digital learning planners.")
-        if absences > 10:
-            recommendations.append("🏫 High absenteeism. Engage with guardians and consider blended/remote learning models.")
-
-    elif G3_pred < 14:
-        recommendations.append("🟡 **Average Performer**: Recommend structured self-paced modules and performance goals.")
-        if studytime <= 2:
-            recommendations.append("📘 Boost study hours using techniques like Pomodoro and spaced repetition.")
-        if absences > 5:
-            recommendations.append("🕒 Reduce missed classes by sending automated alerts and reminders.")
-
-    else:
-        recommendations.append("🟢 **High Performer**: Recommend advanced learning paths or gifted programs.")
-        if studytime > 3:
-            recommendations.append("🚀 Encourage participation in competitions or online MOOCs (Coursera, edX).")
-
-    st.markdown("### 🧑‍🏫 Recommended Actions:")
-    for rec in recommendations:
-        st.info(rec)
