@@ -245,7 +245,15 @@ if submitted:
 
 # 💬 Chatbot
 st.subheader("8. Chat bot")
-# --------------------- Load Local HuggingFace Model ---------------------
+import streamlit as st
+import speech_recognition as sr
+import pyttsx3
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+# ----------------------
+# Load Model and Tokenizer
+# ----------------------
 @st.cache_resource
 def load_model():
     model_name = "distilgpt2"
@@ -255,62 +263,97 @@ def load_model():
 
 tokenizer, model = load_model()
 
-# --------------------- Chatbot Logic ---------------------
-def get_local_ai_response(user_input, chat_history=""):
-    input_text = chat_history + f"User: {user_input}\nAI:"
-    input_ids = tokenizer.encode(input_text, return_tensors="pt")
+# ----------------------
+# Bot Response Function
+# ----------------------
+def generate_response(prompt):
+    inputs = tokenizer.encode(prompt, return_tensors="pt")
+    outputs = model.generate(inputs, max_length=200, pad_token_id=tokenizer.eos_token_id)
+    return tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-    with torch.no_grad():
-        output_ids = model.generate(
-            input_ids,
-            max_length=500,
-            pad_token_id=tokenizer.eos_token_id,
-            do_sample=True,
-            temperature=0.7,
-            top_p=0.9,
-            top_k=50
-        )
+# ----------------------
+# Text-to-Speech
+# ----------------------
+def speak_text(text):
+    engine = pyttsx3.init()
+    engine.say(text)
+    engine.runAndWait()
 
-    response = tokenizer.decode(output_ids[0], skip_special_tokens=True)
-    ai_reply = response[len(input_text):].strip().split("\n")[0]
-    return ai_reply
-
-# --------------------- Voice Recognition ---------------------
-def recognize_voice():
-    r = sr.Recognizer()
-    with sr.Microphone() as source:
-        st.info("Listening... Speak now!")
-        audio = r.listen(source)
+# ----------------------
+# Speech-to-Text
+# ----------------------
+def listen_to_voice():
+    recognizer = sr.Recognizer()
+    mic = sr.Microphone()
+    with mic as source:
+        st.info("🎤 Listening...")
+        audio = recognizer.listen(source)
     try:
-        text = r.recognize_google(audio)
-        st.success(f"You said: {text}")
+        text = recognizer.recognize_google(audio)
+        st.success(f"✅ You said: {text}")
         return text
     except sr.UnknownValueError:
-        st.error("Sorry, could not understand audio.")
-        return ""
+        st.error("❌ Could not understand audio.")
     except sr.RequestError:
-        st.error("Could not request results from Google Speech Recognition.")
-        return ""
+        st.error("❌ Speech recognition service unavailable.")
+    return ""
 
-# --------------------- Streamlit UI ---------------------
-st.set_page_config(page_title="Voice Chatbot", page_icon="🧠")
-st.title("🎤 Local Voice Chatbot with Hugging Face 🤖")
+# ----------------------
+# Session State
+# ----------------------
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
 
-chat_history = st.session_state.get("chat_history", "")
+# ----------------------
+# Streamlit UI
+# ----------------------
+st.set_page_config(page_title="Local AI Chatbot", layout="centered")
+st.title("🤖 Local AI Chatbot with Voice")
 
-# Text input
-user_input = st.text_input("Type your message or use the microphone:")
+st.markdown("""
+    <style>
+    .chatbox {
+        padding: 12px;
+        margin-bottom: 10px;
+        border-radius: 12px;
+    }
+    .user-msg {
+        background-color: #d1e7dd;
+        text-align: right;
+    }
+    .bot-msg {
+        background-color: #f8d7da;
+        text-align: left;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-# Voice input
-if st.button("🎙️ Speak"):
-    voice_input = recognize_voice()
-    if voice_input:
-        user_input = voice_input
+# ----------------------
+# Voice Button
+# ----------------------
+if st.button("🎙️ Talk to the Bot"):
+    user_input = listen_to_voice()
+    if user_input:
+        bot_response = generate_response(user_input)
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
+        st.session_state.chat_history.append({"role": "bot", "content": bot_response})
+        speak_text(bot_response)
 
-if user_input:
-    st.write(f"🧑 You: {user_input}")
-    ai_reply = get_local_ai_response(user_input, chat_history)
-    st.write(f"🤖 AI: {ai_reply}")
+# ----------------------
+# Chat Display
+# ----------------------
+st.markdown("### 💬 Chat History")
+for msg in st.session_state.chat_history:
+    cls = "user-msg" if msg["role"] == "user" else "bot-msg"
+    st.markdown(f'<div class="chatbox {cls}">{msg["content"]}</div>', unsafe_allow_html=True)
 
-    # Update chat history
-    st.session_state.chat_history = chat_history + f"User: {user_input}\nAI: {ai_reply}\n"
+# ----------------------
+# Manual Text Input
+# ----------------------
+user_text = st.text_input("Type a message and press Enter:")
+if user_text:
+    bot_response = generate_response(user_text)
+    st.session_state.chat_history.append({"role": "user", "content": user_text})
+    st.session_state.chat_history.append({"role": "bot", "content": bot_response})
+    speak_text(bot_response)
+    st.experimental_rerun()
