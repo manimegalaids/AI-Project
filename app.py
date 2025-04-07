@@ -1,5 +1,5 @@
 # AI-Augmented Socioeconomic Impact Analysis for Academic Performance
-
+import streamlit as st
 import pandas as pd
 import numpy as np
 import seaborn as sns
@@ -10,6 +10,11 @@ from sklearn.linear_model import BayesianRidge
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import MinMaxScaler
 
+ 🎯 Dashboard Settings
+st.set_page_config(layout="wide")
+st.title("AI-Powered Socio-Economic Dashboard")
+
+
 # 🏁 Load and Merge Dataset
 @st.cache_data
 def load_data():
@@ -19,10 +24,6 @@ def load_data():
     return df_combined
 
 df = load_data()
-
-# 🎯 Dashboard Settings
-st.set_page_config(layout="wide")
-st.title("🎓 AI-Augmented Socioeconomic Analysis of Academic Performance")
 
 # 📊 Dataset Overview
 st.subheader("1. Dataset Overview")
