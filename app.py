@@ -82,6 +82,41 @@ ax2.set_xlabel("Importance Score")
 ax2.set_title("Random Forest: Feature Importance for Final Grade (G3)")
 st.pyplot(fig2)
 
+# 🧠 Model Comparison
+st.subheader("4. Model Accuracy Comparison")
+features = ['age', 'Medu', 'Fedu', 'traveltime', 'studytime', 'failures', 'absences', 'G1', 'G2']
+X = df[features]
+y = df['G3']
+scaler = MinMaxScaler()
+X_scaled = scaler.fit_transform(X)
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+
+models = {
+    "Random Forest": RandomForestRegressor(),
+    "XGBoost": XGBRegressor(),
+    "Bayesian Ridge": BayesianRidge()
+}
+scores = {}
+
+for name, model in models.items():
+    model.fit(X_train, y_train)
+    preds = model.predict(X_test)
+    scores[name] = r2_score(y_test, preds)
+
+st.write("🔍 **R² Scores:**")
+st.json(scores)
+best_model = max(scores, key=scores.get)
+st.success(f"✅ Best Model: {best_model} (R²: {scores[best_model]:.2f})")
+
+# 🔍 Feature Importance for Random Forest
+if best_model == "Random Forest":
+    st.subheader("📊 Feature Importance (Random Forest)")
+    importance_df = pd.DataFrame({
+        "Feature": features,
+        "Importance": models[best_model].feature_importances_
+    }).sort_values(by="Importance", ascending=False)
+    st.bar_chart(importance_df.set_index("Feature"))
+
 # 📌 AI-Driven Socioeconomic Recommendations
 st.subheader("5. AI-Driven Recommendations for Academic Support")
 
