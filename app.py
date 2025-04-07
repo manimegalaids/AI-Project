@@ -241,32 +241,85 @@ if submitted:
         st.markdown("- [🚀 Research Basics for Students – Google Scholar Guide](https://scholar.google.com/)")
 
 # 💬 Chatbot
-st.subheader("8. Ask an AI Bot")
-user_question = st.text_input("Ask anything about student performance...")
+# Page 5: Ask AI Bot with Voice, Chat History, and Suggestions
+elif page == "Ask AI Bot":
+    st.header("🧠 Ask an AI Bot about Student Performance")
 
-def ai_bot_response(query):
-    query = query.lower()
-    if "parent" in query:
-        return "👩‍🎓 Higher parental education, especially mothers' education, improves student performance."
-    elif "fail" in query or "failure" in query:
-        return "📉 Frequent failures need tutoring, mentoring, and academic support."
-    elif "study" in query or "study time" in query:
-        return "📖 Study time matters! Encourage structured routines like Pomodoro or spaced repetition."
-    elif "absent" in query or "absences" in query:
-        return "🏫 High absences impact performance. Use attendance incentives and parental engagement."
-    elif "travel" in query:
-        return "🚌 Long commutes reduce study time. Promote online/hybrid options or community centers."
-    elif "improve" in query or "academic performance" in query:
-        return (
-            "🚀 To improve academic performance:\n"
-            "- Support family education\n"
-            "- Offer personalized tutoring\n"
-            "- Ensure study routines\n"
-            "- Reduce absenteeism\n"
-            "- Provide emotional and academic support"
-        )
-    else:
-        return "🤖 I'm here to help! Ask about parental education, failures, study time, or improving performance."
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
 
-if user_question:
-    st.write(ai_bot_response(user_question))
+    # Auto-suggestions
+    st.markdown("**💡 Suggestions:**")
+    suggestions = [
+        "Which features affect performance most?",
+        "How to improve a student's G3 grade?",
+        "Compare G1 and G3",
+        "Does family support help?"
+    ]
+    for s in suggestions:
+        if st.button(s):
+            user_input = s
+        else:
+            user_input = st.text_input("Type your question or use mic below")
+
+    # Voice input (optional)
+    use_mic = st.checkbox("🎙️ Use voice input")
+    if use_mic:
+        recognizer = sr.Recognizer()
+        with sr.Microphone() as source:
+            st.info("Listening... Please speak")
+            audio = recognizer.listen(source, phrase_time_limit=5)
+        try:
+            user_input = recognizer.recognize_google(audio)
+            st.success(f"You said: {user_input}")
+        except:
+            user_input = ""
+            st.error("Could not understand your voice.")
+
+    def intelligent_bot_reply(question):
+        question = question.lower()
+        if "feature" in question or "affect" in question or "important" in question:
+            return ("The most important features affecting student performance are:\n"
+                    "- **G2 and G1**: Previous grades strongly predict final grades.\n"
+                    "- **Failures**: More failures are linked with lower performance.\n"
+                    "- **Studytime** and **Absences**: More study time helps; more absences harm.")
+        elif "improve" in question or "suggest" in question:
+            return ("To improve performance, students should:\n"
+                    "- Study consistently (increase `studytime`)\n"
+                    "- Avoid failing subjects (reduce `failures`)\n"
+                    "- Maintain good attendance (limit `absences`)\n"
+                    "- Seek support if available (`schoolsup`, `famsup`).")
+        elif "compare g1" in question or ("g1" in question and "g3" in question):
+            return ("`G1` and `G2` are highly correlated with `G3`.\n"
+                    "This means performance in the first two terms predicts final grades well.")
+        elif "correlation" in question:
+            return ("The features most correlated with `G3` are:\n"
+                    "- `G2` (strongest)\n"
+                    "- `G1`\n"
+                    "- `studytime` (mild positive)\n"
+                    "- `failures` (strong negative)")
+        elif "support" in question:
+            return ("Yes! `schoolsup` (extra school support) and `famsup` (family support) \
+                    can help underperforming students improve.")
+        elif "summary" in question:
+            return ("Here's a quick summary:\n"
+                    "- Prior grades (G1, G2) matter most\n"
+                    "- Reducing failures & absences improves grades\n"
+                    "- Extra support is beneficial\n"
+                    "- Study time positively impacts final performance")
+        else:
+            fallback_responses = [
+                "I'm here to help with student performance and features. Try asking about grades or improvement tips!",
+                "Could you rephrase your question? I specialize in academic performance analysis.",
+                "I'm trained on this dataset — try asking about what affects G3, or how to improve performance."
+            ]
+            return random.choice(fallback_responses)
+
+    if user_input:
+        reply = intelligent_bot_reply(user_input)
+        st.session_state.chat_history.append((user_input, reply))
+
+    # Display chat history
+    for q, a in st.session_state.chat_history:
+        st.markdown(f"**You:** {q}")
+        st.markdown(f"**Bot:** {a}")
