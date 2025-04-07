@@ -38,59 +38,49 @@ else:
 st.write("🔍 Unique Values per Feature:")
 st.dataframe(df.nunique().sort_values(ascending=False))
 
-# 📈 Correlation with G3 (Updated Visualization)
-st.subheader("3. Attribute Comparison with Final Grade (G3)")
-selected_cols = ['age', 'Medu', 'Fedu', 'traveltime', 'studytime', 'failures', 'absences', 'G1', 'G2', 'G3']
-corr = df[selected_cols].corr()['G3'].drop("G3").sort_values()
+# Section 3: Attribute Comparison with Final Grade (G3)
+st.header("📊 3. Attribute Comparison with Final Grade (G3)")
+st.markdown("""
+This section shows the relationship between each feature and the final student grade (G3) using:
+- A **Lollipop Chart** to visualize correlation values.
+- A **Random Forest** model to extract and show feature importances.
+""")
 
-# 📊 Horizontal Bar Plot for Better Visibility
-fig1, ax1 = plt.subplots(figsize=(8, 5))
-sns.barplot(x=corr.values, y=corr.index, palette="viridis", ax=ax1)
-ax1.set_title("Correlation of Attributes with Final Grade (G3)")
-ax1.set_xlabel("Correlation Coefficient")
-ax1.set_xlim(-1, 1)
-st.pyplot(fig1)
+# 1. Lollipop Chart for Correlation with G3
+st.subheader("🔗 Correlation of Attributes with Final Grade (G3)")
 
-# 🔥 Heatmap for Full Correlation Matrix
-fig2, ax2 = plt.subplots(figsize=(10, 6))
-sns.heatmap(df[selected_cols].corr(), annot=True, cmap="coolwarm", fmt=".2f", ax=ax2)
-ax2.set_title("Correlation Heatmap")
-st.pyplot(fig2)
+# Calculate correlations
+corr = df[selected_cols].corr()['G3'].drop('G3').sort_values()
 
-# 🧠 Model Comparison
-st.subheader("4. Model Accuracy Comparison")
-features = ['age', 'Medu', 'Fedu', 'traveltime', 'studytime', 'failures', 'absences', 'G1', 'G2']
-X = df[features]
+# Plot Lollipop Chart
+fig, ax = plt.subplots(figsize=(10, 6))
+ax.hlines(y=corr.index, xmin=0, xmax=corr.values, color='skyblue', linewidth=2)
+ax.plot(corr.values, corr.index, "o", color='blue')
+ax.axvline(0, color='gray', linestyle='--', linewidth=1)
+ax.set_xlabel("Correlation with Final Grade (G3)")
+ax.set_title("Lollipop Chart: Feature Correlation with Final Grade (G3)")
+st.pyplot(fig)
+
+# 2. Feature Importance from Random Forest
+st.subheader("🌲 Feature Importance from Random Forest Model")
+
+# Prepare data
+X = df[selected_cols].drop(columns=['G3'])
 y = df['G3']
-scaler = MinMaxScaler()
-X_scaled = scaler.fit_transform(X)
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 
-models = {
-    "Random Forest": RandomForestRegressor(),
-    "XGBoost": XGBRegressor(),
-    "Bayesian Ridge": BayesianRidge()
-}
-scores = {}
+# Train model
+model = RandomForestRegressor(random_state=42)
+model.fit(X, y)
 
-for name, model in models.items():
-    model.fit(X_train, y_train)
-    preds = model.predict(X_test)
-    scores[name] = r2_score(y_test, preds)
+# Get feature importances
+importances = pd.Series(model.feature_importances_, index=X.columns).sort_values()
 
-st.write("🔍 **R² Scores:**")
-st.json(scores)
-best_model = max(scores, key=scores.get)
-st.success(f"✅ Best Model: {best_model} (R²: {scores[best_model]:.2f})")
-
-# 🔍 Feature Importance for Random Forest
-if best_model == "Random Forest":
-    st.subheader("📊 Feature Importance (Random Forest)")
-    importance_df = pd.DataFrame({
-        "Feature": features,
-        "Importance": models[best_model].feature_importances_
-    }).sort_values(by="Importance", ascending=False)
-    st.bar_chart(importance_df.set_index("Feature"))
+# Plot Horizontal Bar Chart
+fig2, ax2 = plt.subplots(figsize=(10, 6))
+importances.plot(kind='barh', color='teal', ax=ax2)
+ax2.set_xlabel("Importance Score")
+ax2.set_title("Random Forest: Feature Importance for Final Grade (G3)")
+st.pyplot(fig2)
 
 # 📌 AI-Driven Socioeconomic Recommendations
 st.subheader("5. AI-Driven Recommendations for Academic Support")
