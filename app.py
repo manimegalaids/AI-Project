@@ -241,85 +241,105 @@ if submitted:
         st.markdown("- [🚀 Research Basics for Students – Google Scholar Guide](https://scholar.google.com/)")
 
 # 💬 Chatbot
-# Page 5: Ask AI Bot with Voice, Chat History, and Suggestions
-elif page == "Ask AI Bot":
-    st.header("🧠 Ask an AI Bot about Student Performance")
+st.subheader("8. Chat bot")
+import streamlit as st
+import openai
+import speech_recognition as sr
+import pyttsx3
 
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
+# Initialize OpenAI (Replace with your own key)
+openai.api_key = "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"
 
-    # Auto-suggestions
-    st.markdown("**💡 Suggestions:**")
-    suggestions = [
-        "Which features affect performance most?",
-        "How to improve a student's G3 grade?",
-        "Compare G1 and G3",
-        "Does family support help?"
-    ]
-    for s in suggestions:
-        if st.button(s):
-            user_input = s
-        else:
-            user_input = st.text_input("Type your question or use mic below")
+# Set Streamlit page configuration
+st.set_page_config(page_title="AI Dashboard", layout="wide")
 
-    # Voice input (optional)
-    use_mic = st.checkbox("🎙️ Use voice input")
-    if use_mic:
-        recognizer = sr.Recognizer()
-        with sr.Microphone() as source:
-            st.info("Listening... Please speak")
-            audio = recognizer.listen(source, phrase_time_limit=5)
-        try:
-            user_input = recognizer.recognize_google(audio)
-            st.success(f"You said: {user_input}")
-        except:
-            user_input = ""
-            st.error("Could not understand your voice.")
+# Sidebar page selector
+page = st.sidebar.selectbox("Choose a page", [
+    "Home",
+    "Dataset Preview",
+    "Attribute Analysis",
+    "Model Accuracy Comparison",
+    "AI-Based Recommendations",
+    "Ask AI Bot"
+])
 
-    def intelligent_bot_reply(question):
-        question = question.lower()
-        if "feature" in question or "affect" in question or "important" in question:
-            return ("The most important features affecting student performance are:\n"
-                    "- **G2 and G1**: Previous grades strongly predict final grades.\n"
-                    "- **Failures**: More failures are linked with lower performance.\n"
-                    "- **Studytime** and **Absences**: More study time helps; more absences harm.")
-        elif "improve" in question or "suggest" in question:
-            return ("To improve performance, students should:\n"
-                    "- Study consistently (increase `studytime`)\n"
-                    "- Avoid failing subjects (reduce `failures`)\n"
-                    "- Maintain good attendance (limit `absences`)\n"
-                    "- Seek support if available (`schoolsup`, `famsup`).")
-        elif "compare g1" in question or ("g1" in question and "g3" in question):
-            return ("`G1` and `G2` are highly correlated with `G3`.\n"
-                    "This means performance in the first two terms predicts final grades well.")
-        elif "correlation" in question:
-            return ("The features most correlated with `G3` are:\n"
-                    "- `G2` (strongest)\n"
-                    "- `G1`\n"
-                    "- `studytime` (mild positive)\n"
-                    "- `failures` (strong negative)")
-        elif "support" in question:
-            return ("Yes! `schoolsup` (extra school support) and `famsup` (family support) \
-                    can help underperforming students improve.")
-        elif "summary" in question:
-            return ("Here's a quick summary:\n"
-                    "- Prior grades (G1, G2) matter most\n"
-                    "- Reducing failures & absences improves grades\n"
-                    "- Extra support is beneficial\n"
-                    "- Study time positively impacts final performance")
-        else:
-            fallback_responses = [
-                "I'm here to help with student performance and features. Try asking about grades or improvement tips!",
-                "Could you rephrase your question? I specialize in academic performance analysis.",
-                "I'm trained on this dataset — try asking about what affects G3, or how to improve performance."
-            ]
-            return random.choice(fallback_responses)
+# Chatbot: Session state for conversation memory
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
+# Voice Recognition Function
+def recognize_voice():
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        st.info("Listening...")
+        audio = recognizer.listen(source, phrase_time_limit=5)
+    try:
+        text = recognizer.recognize_google(audio)
+        st.success(f"You said: {text}")
+        return text
+    except sr.UnknownValueError:
+        st.warning("Sorry, I could not understand audio.")
+    except sr.RequestError:
+        st.error("API unavailable")
+    return None
+
+# Text-to-speech function
+def speak(text):
+    engine = pyttsx3.init()
+    engine.say(text)
+    engine.runAndWait()
+
+# Get AI response
+def get_ai_response(prompt):
+    messages = [{"role": "system", "content": "You are an AI academic assistant helping analyze student data and give insights."}]
+    for user, ai in st.session_state.chat_history:
+        messages.append({"role": "user", "content": user})
+        messages.append({"role": "assistant", "content": ai})
+    messages.append({"role": "user", "content": prompt})
+    
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",  # or gpt-4 if available
+        messages=messages,
+        max_tokens=200
+    )
+    answer = response['choices'][0]['message']['content'].strip()
+    return answer
+
+# -------------------------------
+# 🧠 ASK AI BOT PAGE
+# -------------------------------
+if page == "Ask AI Bot":
+    st.title("🤖 Ask the AI Bot")
+    st.write("Get insights and explanations about student academic performance, AI predictions, or socio-economic factors.")
+
+    # Suggested Questions
+    st.markdown("💡 **Try asking:**")
+    st.markdown("- What factors most affect student performance?")
+    st.markdown("- How does parental education influence grades?")
+    st.markdown("- Can AI suggest how to improve a student's performance?")
+    
+    # Input options
+    input_mode = st.radio("Choose input mode:", ["Text", "Voice"])
+    user_input = ""
+
+    if input_mode == "Text":
+        user_input = st.text_input("Type your question:")
+    else:
+        if st.button("🎤 Start Voice Input"):
+            user_input = recognize_voice()
 
     if user_input:
-        reply = intelligent_bot_reply(user_input)
-        st.session_state.chat_history.append((user_input, reply))
+        with st.spinner("Thinking..."):
+            response = get_ai_response(user_input)
+            st.session_state.chat_history.append((user_input, response))
+            st.success("Answer:")
+            st.write(response)
+            if st.checkbox("🔊 Read aloud"):
+                speak(response)
 
     # Display chat history
-    for q, a in st.session_state.chat_history:
-        st.markdown(f"**You:** {q}")
-        st.markdown(f"**Bot:** {a}")
+    if st.session_state.chat_history:
+        st.markdown("## 🗂️ Chat History")
+        for i, (q, a) in enumerate(reversed(st.session_state.chat_history[-10:]), 1):
+            st.markdown(f"**Q{i}:** {q}")
+            st.markdown(f"**A{i}:** {a}")
