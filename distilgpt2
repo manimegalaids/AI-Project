@@ -1,0 +1,7 @@
+from transformers import AutoTokenizer, AutoModelForCausalLM
+
+def load_model():
+    model_name = "distilgpt2"  # this will be downloaded from the internet
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name)
+    return tokenizer, model
