@@ -121,8 +121,24 @@ st.subheader("7. Predict Final Grade & Get Personalized Learning Path")
 with st.form("combined_prediction_form"):
     st.markdown("📌 Enter student academic and socio-economic details:")
     age = st.slider("Age", 15, 22, 17)
-    Medu = st.slider("Mother's Education (0-4)", 0, 4, 2)
-    Fedu = st.slider("Father's Education (0-4)", 0, 4, 2)
+   Medu = st.selectbox("Mother's Education Level", options=[0, 1, 2, 3, 4],
+                    format_func=lambda x: {
+                        0: "0 - None",
+                        1: "1 - Primary (up to 4th grade)",
+                        2: "2 - 5th to 9th grade",
+                        3: "3 - Secondary (High School)",
+                        4: "4 - Higher (University)"
+                    }[x])
+
+    Fedu = st.selectbox("Father's Education Level", options=[0, 1, 2, 3, 4],
+                    format_func=lambda x: {
+                        0: "0 - None",
+                        1: "1 - Primary (up to 4th grade)",
+                        2: "2 - 5th to 9th grade",
+                        3: "3 - Secondary (High School)",
+                        4: "4 - Higher (University)"
+                    }[x])
+
     traveltime = st.slider("Travel Time (1=short <15min - 4=long >1hr)", 1, 4, 1)
     studytime = st.slider("Weekly Study Time (1=<2hrs - 4=>10hrs)", 1, 4, 2)
     failures = st.slider("Past Class Failures", 0, 4, 0)
