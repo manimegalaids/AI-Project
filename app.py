@@ -242,6 +242,12 @@ if submitted:
         st.markdown("- [🎖️ Olympiad/Competition Preparation – Learn More](https://artofproblemsolving.com/)")
         st.markdown("- [🚀 Research Basics for Students – Google Scholar Guide](https://scholar.google.com/)")
 
+@st.cache_resource
+def load_model():
+    model_name = "distilgpt2"
+    tokenizer = AutoTokenizer.from_pretrained(model_name, force_download=True)
+    model = AutoModelForCausalLM.from_pretrained(model_name, force_download=True)
+    return tokenizer, model
 
 # 💬 Chatbot
 st.subheader("8. Chat bot")
