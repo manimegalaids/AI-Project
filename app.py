@@ -242,20 +242,18 @@ if submitted:
         st.markdown("- [🎖️ Olympiad/Competition Preparation – Learn More](https://artofproblemsolving.com/)")
         st.markdown("- [🚀 Research Basics for Students – Google Scholar Guide](https://scholar.google.com/)")
 
-@st.cache_resource
-def load_model():
-    model_name = "distilgpt2"
-    tokenizer = AutoTokenizer.from_pretrained(model_name, force_download=True)
-    model = AutoModelForCausalLM.from_pretrained(model_name, force_download=True)
-    return tokenizer, model
-
-# 💬 Chatbot
-st.subheader("8. Chat bot")
+# app.py
 import streamlit as st
 import speech_recognition as sr
 import pyttsx3
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoTokenizer, AutoModelForCausalLM
+
+# ----------------------
+# Streamlit Page Config
+# ----------------------
+st.set_page_config(page_title="Local AI Chatbot", layout="centered")
+st.title("🤖 Local AI Chatbot with Voice")
 
 # ----------------------
 # Load Model and Tokenizer
@@ -263,14 +261,14 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 @st.cache_resource
 def load_model():
     model_name = "distilgpt2"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, force_download=True)
+    model = AutoModelForCausalLM.from_pretrained(model_name, force_download=True)
     return tokenizer, model
 
 tokenizer, model = load_model()
 
 # ----------------------
-# Bot Response Function
+# Generate Bot Response
 # ----------------------
 def generate_response(prompt):
     inputs = tokenizer.encode(prompt, return_tensors="pt")
@@ -305,23 +303,21 @@ def listen_to_voice():
     return ""
 
 # ----------------------
-# Session State
+# Session State for Chat
 # ----------------------
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 # ----------------------
-# Streamlit UI
+# UI Styling
 # ----------------------
-st.set_page_config(page_title="Local AI Chatbot", layout="centered")
-st.title("🤖 Local AI Chatbot with Voice")
-
 st.markdown("""
     <style>
     .chatbox {
         padding: 12px;
         margin-bottom: 10px;
         border-radius: 12px;
+        font-size: 16px;
     }
     .user-msg {
         background-color: #d1e7dd;
@@ -335,7 +331,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ----------------------
-# Voice Button
+# Talk Button (Voice Input)
 # ----------------------
 if st.button("🎙️ Talk to the Bot"):
     user_input = listen_to_voice()
@@ -344,14 +340,6 @@ if st.button("🎙️ Talk to the Bot"):
         st.session_state.chat_history.append({"role": "user", "content": user_input})
         st.session_state.chat_history.append({"role": "bot", "content": bot_response})
         speak_text(bot_response)
-
-# ----------------------
-# Chat Display
-# ----------------------
-st.markdown("### 💬 Chat History")
-for msg in st.session_state.chat_history:
-    cls = "user-msg" if msg["role"] == "user" else "bot-msg"
-    st.markdown(f'<div class="chatbox {cls}">{msg["content"]}</div>', unsafe_allow_html=True)
 
 # ----------------------
 # Manual Text Input
@@ -363,3 +351,11 @@ if user_text:
     st.session_state.chat_history.append({"role": "bot", "content": bot_response})
     speak_text(bot_response)
     st.experimental_rerun()
+
+# ----------------------
+# Display Chat History
+# ----------------------
+st.markdown("### 💬 Chat History")
+for msg in st.session_state.chat_history:
+    cls = "user-msg" if msg["role"] == "user" else "bot-msg"
+    st.markdown(f'<div class="chatbox {cls}">{msg["content"]}</div>', unsafe_allow_html=True)
