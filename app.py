@@ -300,3 +300,10 @@ if st.button("🤖 Ask"):
         speak_text(bot_reply)
     else:
         st.warning("Please type a message to start the conversation.")
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+
+model_name = "bert-base-uncased"
+
+# This will download the model files from the internet
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForSequenceClassification.from_pretrained(model_name)
