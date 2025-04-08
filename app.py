@@ -3,7 +3,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pyttsx3
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 import speech_recognition as sr
 from sklearn.model_selection import train_test_split
@@ -244,47 +244,48 @@ if submitted:
         st.markdown("- [🚀 Research Basics for Students – Google Scholar Guide](https://scholar.google.com/)")
 
 # 🤖 Section 8: Chatbot Assistant
+
 st.subheader("8. 🗣️ Academic Chatbot Assistant")
 
-# Load pre-trained DialoGPT (medium-sized model)
+# Load GPT2 as a chatbot (replacement for DialoGPT)
 @st.cache_resource
 def load_chatbot():
-    tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-medium")
-    model = AutoModelForSequenceClassification.from_pretrained("microsoft/DialoGPT-medium")
+    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    model = AutoModelForCausalLM.from_pretrained("gpt2")
+    model.eval()
     return tokenizer, model
 
 tokenizer, model = load_chatbot()
 
-# Maintain chat history
-if "chat_history_ids" not in st.session_state:
-    st.session_state.chat_history_ids = None
+# Initialize session state
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = None
 if "user_inputs" not in st.session_state:
     st.session_state.user_inputs = []
 if "bot_responses" not in st.session_state:
     st.session_state.bot_responses = []
 
-# Chat input
+# User input
 user_input = st.text_input("💬 Ask me anything about study tips, grades, or student support:")
 
 if user_input:
-    # Append user input to session history
     st.session_state.user_inputs.append(user_input)
 
-    # Encode user input and append to chat history
-    new_input_ids = tokenizer.encode(user_input + tokenizer.eos_token, return_tensors="pt")
+    # Encode user input
+    new_input_ids = tokenizer.encode(user_input + tokenizer.eos_token, return_tensors='pt')
 
-    # Concatenate with chat history
-    bot_input_ids = torch.cat([st.session_state.chat_history_ids, new_input_ids], dim=-1) if st.session_state.chat_history_ids is not None else new_input_ids
+    # Prepare input by adding chat history
+    bot_input_ids = torch.cat([st.session_state.chat_history, new_input_ids], dim=-1) if st.session_state.chat_history is not None else new_input_ids
 
     # Generate response
     chat_history_ids = model.generate(bot_input_ids, max_length=1000, pad_token_id=tokenizer.eos_token_id)
-    st.session_state.chat_history_ids = chat_history_ids
+    st.session_state.chat_history = chat_history_ids
 
     # Decode response
     bot_output = tokenizer.decode(chat_history_ids[:, bot_input_ids.shape[-1]:][0], skip_special_tokens=True)
     st.session_state.bot_responses.append(bot_output)
 
-# Display conversation
+# Show chat conversation
 if st.session_state.user_inputs:
     for i in range(len(st.session_state.user_inputs)):
         st.markdown(f"**👩‍🎓 You:** {st.session_state.user_inputs[i]}")
