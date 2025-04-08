@@ -3,7 +3,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pyttsx3
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 import speech_recognition as sr
 from sklearn.model_selection import train_test_split
@@ -246,15 +246,13 @@ if submitted:
 # 🤖 8. Local AI Chatbot with Voice & Memory
 st.subheader("8. Local AI Chatbot with Voice & Memory")
 
-# ----------------------
-# Load Model and Tokenizer
-# ----------------------
 @st.cache_resource
 def load_model():
-    model_name = "distilgpt2"
+    model_name = "bert-base-uncased"  # Safe and public model
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
     return tokenizer, model
+
 
 tokenizer, model = load_model()
 
