@@ -243,14 +243,17 @@ if submitted:
         st.markdown("- [🎖️ Olympiad/Competition Preparation – Learn More](https://artofproblemsolving.com/)")
         st.markdown("- [🚀 Research Basics for Students – Google Scholar Guide](https://scholar.google.com/)")
 
-# app.py Chat bot
-st.title("8. Local AI Chatbot with Voice")
+# 🤖 8. Local AI Chatbot with Voice & Memory
+st.subheader("8. Local AI Chatbot with Voice & Memory")
 
+# ----------------------
+# Load Model and Tokenizer
+# ----------------------
 @st.cache_resource
 def load_model():
     model_name = "distilgpt2"
-    tokenizer = AutoTokenizer.from_pretrained(model_name, force_download=True)
-    model = AutoModelForCausalLM.from_pretrained(model_name, force_download=True)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name)
     return tokenizer, model
 
 tokenizer, model = load_model()
@@ -258,10 +261,12 @@ tokenizer, model = load_model()
 # ----------------------
 # Generate Bot Response
 # ----------------------
-def generate_response(prompt):
-    inputs = tokenizer.encode(prompt, return_tensors="pt")
-    outputs = model.generate(inputs, max_length=200, pad_token_id=tokenizer.eos_token_id)
-    return tokenizer.decode(outputs[0], skip_special_tokens=True)
+def generate_response(history, user_input):
+    full_input = history + f"\nUser: {user_input}\nAI:"
+    input_ids = tokenizer.encode(full_input, return_tensors="pt")
+    output_ids = model.generate(input_ids, max_length=300, pad_token_id=tokenizer.eos_token_id, do_sample=True)
+    response = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+    return response.split("AI:")[-1].strip()
 
 # ----------------------
 # Text-to-Speech
@@ -272,78 +277,29 @@ def speak_text(text):
     engine.runAndWait()
 
 # ----------------------
-# Speech-to-Text
-# ----------------------
-def listen_to_voice():
-    recognizer = sr.Recognizer()
-    mic = sr.Microphone()
-    with mic as source:
-        st.info("🎤 Listening...")
-        audio = recognizer.listen(source)
-    try:
-        text = recognizer.recognize_google(audio)
-        st.success(f"✅ You said: {text}")
-        return text
-    except sr.UnknownValueError:
-        st.error("❌ Could not understand audio.")
-    except sr.RequestError:
-        st.error("❌ Speech recognition service unavailable.")
-    return ""
-
-# ----------------------
-# Session State for Chat
+# Initialize chat history
 # ----------------------
 if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+    st.session_state.chat_history = ""
 
 # ----------------------
-# UI Styling
+# Chatbot UI
 # ----------------------
-st.markdown("""
-    <style>
-    .chatbox {
-        padding: 12px;
-        margin-bottom: 10px;
-        border-radius: 12px;
-        font-size: 16px;
-    }
-    .user-msg {
-        background-color: #d1e7dd;
-        text-align: right;
-    }
-    .bot-msg {
-        background-color: #f8d7da;
-        text-align: left;
-    }
-    </style>
-""", unsafe_allow_html=True)
+user_input = st.text_input("💬 Type your message to the chatbot:")
 
-# ----------------------
-# Talk Button (Voice Input)
-# ----------------------
-if st.button("🎙️ Talk to the Bot"):
-    user_input = listen_to_voice()
+if st.button("🤖 Ask"):
     if user_input:
-        bot_response = generate_response(user_input)
-        st.session_state.chat_history.append({"role": "user", "content": user_input})
-        st.session_state.chat_history.append({"role": "bot", "content": bot_response})
-        speak_text(bot_response)
+        # Generate reply
+        bot_reply = generate_response(st.session_state.chat_history, user_input)
 
-# ----------------------
-# Manual Text Input
-# ----------------------
-user_text = st.text_input("Type a message and press Enter:")
-if user_text:
-    bot_response = generate_response(user_text)
-    st.session_state.chat_history.append({"role": "user", "content": user_text})
-    st.session_state.chat_history.append({"role": "bot", "content": bot_response})
-    speak_text(bot_response)
-    st.experimental_rerun()
+        # Update history
+        st.session_state.chat_history += f"\nUser: {user_input}\nAI: {bot_reply}"
 
-# ----------------------
-# Display Chat History
-# ----------------------
-st.markdown("### 💬 Chat History")
-for msg in st.session_state.chat_history:
-    cls = "user-msg" if msg["role"] == "user" else "bot-msg"
-    st.markdown(f'<div class="chatbox {cls}">{msg["content"]}</div>', unsafe_allow_html=True)
+        # Display chat
+        st.markdown("### 💬 Chat Conversation")
+        st.text_area("Chat History", st.session_state.chat_history, height=300)
+
+        # Speak reply
+        speak_text(bot_reply)
+    else:
+        st.warning("Please type a message to start the conversation.")
