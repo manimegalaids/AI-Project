@@ -2,7 +2,9 @@ import streamlit as st
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-from transformers import AutoModelForCausalLM, AutoTokenizer
+st.set_page_config(page_title="Local AI Chatbot", layout="centered")  # 🟢 FIRST Streamlit command
+import pyttsx3
+from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 import speech_recognition as sr
 from sklearn.model_selection import train_test_split
@@ -242,22 +244,9 @@ if submitted:
         st.markdown("- [🎖️ Olympiad/Competition Preparation – Learn More](https://artofproblemsolving.com/)")
         st.markdown("- [🚀 Research Basics for Students – Google Scholar Guide](https://scholar.google.com/)")
 
-# app.py
-import streamlit as st
-import speech_recognition as sr
-import pyttsx3
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+# app.py Chat bot
+st.title("8. Local AI Chatbot with Voice")
 
-# ----------------------
-# Streamlit Page Config
-# ----------------------
-st.set_page_config(page_title="Local AI Chatbot", layout="centered")
-st.title("🤖 Local AI Chatbot with Voice")
-
-# ----------------------
-# Load Model and Tokenizer
-# ----------------------
 @st.cache_resource
 def load_model():
     model_name = "distilgpt2"
