@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-st.set_page_config(page_title="Local AI Chatbot", layout="centered")  # 🟢 FIRST Streamlit command
 import pyttsx3
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
