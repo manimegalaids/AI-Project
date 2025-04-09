@@ -3,7 +3,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pyttsx3
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
 import torch
 import speech_recognition as sr
 from sklearn.model_selection import train_test_split
@@ -244,44 +244,92 @@ if submitted:
         st.markdown("- [🚀 Research Basics for Students – Google Scholar Guide](https://scholar.google.com/)")
 
 # 🤖 Section 8: Chatbot Assistant
-import streamlit as st
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
-
 st.subheader("8. 🗣️ Academic Chatbot Assistant")
+# ----------------------------
+# Load Dataset
+# ----------------------------
+@st.cache_data
+def load_dataset():
+    df1 = pd.read_csv("student-mat.csv", sep=';')
+    df2 = pd.read_csv("student-por.csv", sep=';')
+    df = pd.concat([df1, df2]).drop_duplicates().reset_index(drop=True)
+    return df
 
+df = load_dataset()
+dataset_columns = df.columns.tolist()
+
+# ----------------------------
+# Load GPT2 Model
+# ----------------------------
 @st.cache_resource
-def load_chatbot():
-    tokenizer = AutoTokenizer.from_pretrained("gpt2", cache_dir="./model_cache")
-    model = AutoModelForCausalLM.from_pretrained("gpt2", cache_dir="./model_cache")
+def load_model():
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    model = GPT2LMHeadModel.from_pretrained("gpt2")
     model.eval()
     return tokenizer, model
 
-tokenizer, model = load_chatbot()
+tokenizer, model = load_model()
 
+# ----------------------------
+# Text-to-Speech
+# ----------------------------
+def speak(text):
+    engine = pyttsx3.init()
+    engine.say(text)
+    engine.runAndWait()
+
+# ----------------------------
+# Voice-to-Text
+# ----------------------------
+def voice_input():
+    recognizer = sr.Recognizer()
+    mic = sr.Microphone()
+    with mic as source:
+        st.info("🎤 Listening...")
+        audio = recognizer.listen(source)
+    try:
+        text = recognizer.recognize_google(audio)
+        st.success(f"You said: {text}")
+        return text
+    except sr.UnknownValueError:
+        st.error("Could not understand.")
+    except sr.RequestError:
+        st.error("Speech recognition service down.")
+    return ""
+
+# ----------------------------
+# Generate Response with Context
+# ----------------------------
+def generate_reply(context, user_message):
+    base_prompt = f"The dataset has columns: {', '.join(dataset_columns)}.\n"
+    full_prompt = base_prompt + context + f"\nUser: {user_message}\nBot:"
+    inputs = tokenizer.encode(full_prompt, return_tensors='pt')
+    outputs = model.generate(inputs, max_length=300, pad_token_id=tokenizer.eos_token_id)
+    reply = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    return reply.split("Bot:")[-1].strip()
+
+# ----------------------------
+# Streamlit UI
+# ----------------------------
+st.title("🤖 Academic Chatbot Assistant (with Voice & Context)")
+
+# Chat memory
 if "chat_history" not in st.session_state:
-    st.session_state.chat_history = None
-if "user_inputs" not in st.session_state:
-    st.session_state.user_inputs = []
-if "bot_responses" not in st.session_state:
-    st.session_state.bot_responses = []
+    st.session_state.chat_history = ""
 
-user_input = st.text_input("💬 Ask me anything about study tips, grades, or student support:")
+# Voice Button
+if st.button("🎙️ Talk to the Chatbot"):
+    user_input = voice_input()
+else:
+    user_input = st.text_input("Type your question here:")
 
+# Process Input
 if user_input:
-    st.session_state.user_inputs.append(user_input)
+    response = generate_reply(st.session_state.chat_history, user_input)
+    st.session_state.chat_history += f"\nUser: {user_input}\nBot: {response}"
+    speak(response)
 
-    input_ids = tokenizer.encode(user_input + tokenizer.eos_token, return_tensors='pt')
-    bot_input_ids = torch.cat([st.session_state.chat_history, input_ids], dim=-1) if st.session_state.chat_history is not None else input_ids
-
-    output_ids = model.generate(bot_input_ids, max_length=1000, pad_token_id=tokenizer.eos_token_id)
-    st.session_state.chat_history = output_ids
-
-    response = tokenizer.decode(output_ids[:, bot_input_ids.shape[-1]:][0], skip_special_tokens=True)
-    st.session_state.bot_responses.append(response)
-
-# Display the conversation
-if st.session_state.user_inputs:
-    for i in range(len(st.session_state.user_inputs)):
-        st.markdown(f"**👩‍🎓 You:** {st.session_state.user_inputs[i]}")
-        st.markdown(f"**🤖 Bot:** {st.session_state.bot_responses[i]}")
+# Display Chat History
+if st.session_state.chat_history:
+    st.markdown("### 🧠 Conversation Log")
+    st.text_area("Chat Log", value=st.session_state.chat_history, height=300)
