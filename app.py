@@ -1,6 +1,6 @@
-import streamlit as st
 import os
 os.environ["TRANSFORMERS_NO_TF"] = "1"
+import streamlit as st
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
