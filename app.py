@@ -321,4 +321,4 @@ use_voice = st.checkbox("🎤 Use Voice Input", value=False)
 if use_voice:
     if st.button("Start Talking"):
         user_input = voice_input()
-    else:
+else:
