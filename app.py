@@ -248,8 +248,9 @@ if submitted:
 
 # 🤖 Section 8: Chatbot Assistant
 st.subheader("8. 🗣️ Academic Chatbot Assistant")
+
 # ----------------------------
-# Load Dataset
+# Load Chatbot Model (from local cache)
 # ----------------------------
 @st.cache_resource
 def load_chatbot():
@@ -258,21 +259,15 @@ def load_chatbot():
     model.eval()
     return tokenizer, model
 
+tokenizer, model = load_chatbot()
 
-df = load_dataset()
+# ----------------------------
+# Load CSV Dataset (for context)
+# ----------------------------
+df_mat = pd.read_csv("student-mat.csv", sep=";")
+df_por = pd.read_csv("student-por.csv", sep=";")
+df = pd.concat([df_mat, df_por]).drop_duplicates().reset_index(drop=True)
 dataset_columns = df.columns.tolist()
-
-# ----------------------------
-# Load GPT2 Model
-# ----------------------------
-@st.cache_resource
-def load_model():
-    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-    model = GPT2LMHeadModel.from_pretrained("gpt2")
-    model.eval()
-    return tokenizer, model
-
-tokenizer, model = load_model()
 
 # ----------------------------
 # Text-to-Speech
@@ -296,16 +291,16 @@ def voice_input():
         st.success(f"You said: {text}")
         return text
     except sr.UnknownValueError:
-        st.error("Could not understand.")
+        st.error("❌ Could not understand.")
     except sr.RequestError:
-        st.error("Speech recognition service down.")
+        st.error("❌ Speech recognition service down.")
     return ""
 
 # ----------------------------
-# Generate Response with Context
+# Generate Response with Dataset Context
 # ----------------------------
 def generate_reply(context, user_message):
-    base_prompt = f"The dataset has columns: {', '.join(dataset_columns)}.\n"
+    base_prompt = f"The dataset contains the following columns: {', '.join(dataset_columns)}.\n"
     full_prompt = base_prompt + context + f"\nUser: {user_message}\nBot:"
     inputs = tokenizer.encode(full_prompt, return_tensors='pt')
     outputs = model.generate(inputs, max_length=300, pad_token_id=tokenizer.eos_token_id)
@@ -313,27 +308,17 @@ def generate_reply(context, user_message):
     return reply.split("Bot:")[-1].strip()
 
 # ----------------------------
-# Streamlit UI
+# Chat Session State
 # ----------------------------
-st.title("🤖 Academic Chatbot Assistant (with Voice & Context)")
-
-# Chat memory
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = ""
 
-# Voice Button
-if st.button("🎙️ Talk to the Chatbot"):
-    user_input = voice_input()
-else:
-    user_input = st.text_input("Type your question here:")
+# ----------------------------
+# Voice Input or Text Input
+# ----------------------------
+use_voice = st.checkbox("🎤 Use Voice Input", value=False)
 
-# Process Input
-if user_input:
-    response = generate_reply(st.session_state.chat_history, user_input)
-    st.session_state.chat_history += f"\nUser: {user_input}\nBot: {response}"
-    speak(response)
-
-# Display Chat History
-if st.session_state.chat_history:
-    st.markdown("### 🧠 Conversation Log")
-    st.text_area("Chat Log", value=st.session_state.chat_history, height=300)
+if use_voice:
+    if st.button("Start Talking"):
+        user_input = voice_input()
+    else:
