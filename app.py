@@ -1,5 +1,6 @@
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
 import os
-os.environ["TRANSFORMERS_NO_TF"] = "1"
+os.environ["TRANSFORMERS_NO_TF"] = "1"  # Stop TensorFlow-related import errors
 import streamlit as st
 import pandas as pd
 import seaborn as sns
@@ -250,12 +251,13 @@ st.subheader("8. 🗣️ Academic Chatbot Assistant")
 # ----------------------------
 # Load Dataset
 # ----------------------------
-@st.cache_data
-def load_dataset():
-    df1 = pd.read_csv("student-mat.csv", sep=';')
-    df2 = pd.read_csv("student-por.csv", sep=';')
-    df = pd.concat([df1, df2]).drop_duplicates().reset_index(drop=True)
-    return df
+@st.cache_resource
+def load_chatbot():
+    tokenizer = GPT2Tokenizer.from_pretrained("./model_cache/gpt2")
+    model = GPT2LMHeadModel.from_pretrained("./model_cache/gpt2")
+    model.eval()
+    return tokenizer, model
+
 
 df = load_dataset()
 dataset_columns = df.columns.tolist()
