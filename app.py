@@ -247,85 +247,55 @@ if submitted:
         st.markdown("- [🚀 Research Basics for Students – Google Scholar Guide](https://scholar.google.com/)")
 
 # 🤖 Section 8: Chatbot Assistant
-st.subheader("8. 🗣️ Academic Chatbot Assistant")
+st.subheader("8. 🗣️ Academic Chatbot Assistant"
+user_question = st.text_input("Ask anything about student performance...")
 
-# ----------------------------
-# Load Chatbot Model (from local cache)
-# ----------------------------
-@st.cache_resource
-def load_chatbot():
-    tokenizer = GPT2Tokenizer.from_pretrained("./model_cache/gpt2")
-    model = GPT2LMHeadModel.from_pretrained("./model_cache/gpt2")
-    model.eval()
-    return tokenizer, model
+def ai_bot_response(query):
+    query = query.lower()
+    
+    if "parent" in query:
+        return (
+            "👩‍🎓 Higher parental education, especially mothers' education, "
+            "has a strong positive impact on student grades. Community-based "
+            "parental literacy programs can help bridge this gap."
+        )
+    elif "fail" in query or "failure" in query:
+        return (
+            "📉 Frequent failures indicate students need timely intervention. "
+            "Tutoring, mentoring, and academic support programs are effective "
+            "in reducing future failure rates and boosting confidence."
+        )
+    elif "study" in query or "study time" in query:
+        return (
+            "📖 Increased study time often correlates with better academic performance. "
+            "Encourage consistent daily study routines and focused learning strategies "
+            "like Pomodoro or spaced repetition."
+        )
+    elif "absent" in query or "absences" in query:
+        return (
+            "🏫 High absences can hurt learning progress. Schools should promote attendance "
+            "through counseling, parental involvement, and incentives for regular attendance."
+        )
+    elif "travel" in query:
+        return (
+            "🚌 Longer travel time might reduce study hours. Providing access to nearby learning "
+            "centers or online learning options can help."
+        )
+    elif "improve" in query or "academic performance" in query:
+        return (
+            "🚀 To improve academic performance:\n"
+            "- Support family education (especially mothers)\n"
+            "- Offer personalized tutoring for struggling students\n"
+            "- Ensure daily study routines\n"
+            "- Reduce student absenteeism\n"
+            "- Provide socio-emotional support\n\n"
+            "✨ Use the dashboard's AI predictions to identify at-risk students early!"
+        )
+    else:
+        return (
+            "🤖 I'm here to help! You can ask about factors like parental education, failures, "
+            "study time, or how to improve student grades."
+        )
 
-tokenizer, model = load_chatbot()
-
-# ----------------------------
-# Load CSV Dataset (for context)
-# ----------------------------
-df_mat = pd.read_csv("student-mat.csv", sep=";")
-df_por = pd.read_csv("student-por.csv", sep=";")
-df = pd.concat([df_mat, df_por]).drop_duplicates().reset_index(drop=True)
-dataset_columns = df.columns.tolist()
-
-# ----------------------------
-# Text-to-Speech
-# ----------------------------
-def speak(text):
-    engine = pyttsx3.init()
-    engine.say(text)
-    engine.runAndWait()
-
-# ----------------------------
-# Voice-to-Text
-# ----------------------------
-def voice_input():
-    recognizer = sr.Recognizer()
-    mic = sr.Microphone()
-    with mic as source:
-        st.info("🎤 Listening...")
-        audio = recognizer.listen(source)
-    try:
-        text = recognizer.recognize_google(audio)
-        st.success(f"You said: {text}")
-        return text
-    except sr.UnknownValueError:
-        st.error("❌ Could not understand.")
-    except sr.RequestError:
-        st.error("❌ Speech recognition service down.")
-    return ""
-
-# ----------------------------
-# Generate Response with Dataset Context
-# ----------------------------
-def generate_reply(context, user_message):
-    base_prompt = f"The dataset contains the following columns: {', '.join(dataset_columns)}.\n"
-    full_prompt = base_prompt + context + f"\nUser: {user_message}\nBot:"
-    inputs = tokenizer.encode(full_prompt, return_tensors='pt')
-    outputs = model.generate(inputs, max_length=300, pad_token_id=tokenizer.eos_token_id)
-    reply = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    return reply.split("Bot:")[-1].strip()
-
-# Process input
-if user_input:
-    response = generate_reply(st.session_state.chat_history, user_input)
-    st.session_state.chat_history += f"\nUser: {user_input}\nBot: {response}"
-    speak(response)
-
-# Display Chat History
-if st.session_state.chat_history:
-    st.markdown("### 🧠 Conversation Log")
-    st.text_area("Chat Log", value=st.session_state.chat_history, height=300)
-
-# ----------------------------
-# Voice Input or Text Input
-# ----------------------------
-use_voice = st.checkbox("🎤 Use Voice Input", value=False)
-
-if use_voice:
-    if st.button("Start Talking"):
-        user_input = voice_input()
-else:  # <<-- This was the broken line
-    user_input = st.text_input("Type your question here:")  # ✅ Add this line!
-
+if user_question:
+    st.write(ai_bot_response(user_question))
