@@ -307,11 +307,16 @@ def generate_reply(context, user_message):
     reply = tokenizer.decode(outputs[0], skip_special_tokens=True)
     return reply.split("Bot:")[-1].strip()
 
-# ----------------------------
-# Chat Session State
-# ----------------------------
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = ""
+# Process input
+if user_input:
+    response = generate_reply(st.session_state.chat_history, user_input)
+    st.session_state.chat_history += f"\nUser: {user_input}\nBot: {response}"
+    speak(response)
+
+# Display Chat History
+if st.session_state.chat_history:
+    st.markdown("### 🧠 Conversation Log")
+    st.text_area("Chat Log", value=st.session_state.chat_history, height=300)
 
 # ----------------------------
 # Voice Input or Text Input
@@ -321,4 +326,6 @@ use_voice = st.checkbox("🎤 Use Voice Input", value=False)
 if use_voice:
     if st.button("Start Talking"):
         user_input = voice_input()
-else:
+else:  # <<-- This was the broken line
+    user_input = st.text_input("Type your question here:")  # ✅ Add this line!
+
