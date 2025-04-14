@@ -342,31 +342,49 @@ if best_model_name == "Random Forest":
     ax2.set_title("Feature Importance from Random Forest")
     st.pyplot(fig2)
 
-# 📌 AI-Driven Socioeconomic Recommendations
-st.subheader("5. AI-Driven Recommendations for Academic Support")
+# 📌 5. AI-Driven Socioeconomic Recommendations
+st.subheader("📌 5. AI-Driven Recommendations for Academic Support")
 
+# 🧠 Use feature importance from best model (if applicable)
+important_features = []
+if best_model_name == "Random Forest":
+    feature_imp = trained_models[best_model_name].feature_importances_
+    importance_df = pd.DataFrame({
+        'Feature': features,
+        'Importance': feature_imp
+    }).sort_values(by='Importance', ascending=False)
+    important_features = importance_df.head(5)['Feature'].tolist()
+
+# 📊 Combine correlations + importance for better reasoning
 recommendations = []
 
-if corr['Medu'] > 0.2 or corr['Fedu'] > 0.2:
-    recommendations.append("📚 **Parental Education**: Students with better-educated parents (especially mothers) tend to perform better. Promote adult education and family engagement programs.")
+# 🎯 Better Recommendations Logic
+if 'Medu' in important_features or 'Fedu' in important_features:
+    recommendations.append("👩‍🏫 **Parental Education Impact**: Students with more educated parents often show higher grades. Support parent literacy programs and invite parents for school engagement workshops.")
 
-if corr['failures'] < -0.3:
-    recommendations.append("⏱️ **Failures**: Past failures significantly lower future academic performance. Implement early warning systems, mentoring, and after-school tutoring.")
+if 'failures' in important_features and corr['failures'] < -0.3:
+    recommendations.append("🔁 **Past Failures Matter**: History of failure strongly impacts future grades. Introduce peer mentoring, targeted academic support, and emotional counseling.")
 
-if corr['studytime'] > 0.2:
-    recommendations.append("📖 **Study Time**: More time spent studying correlates with better grades. Encourage structured study routines and productivity workshops.")
+if 'studytime' in important_features and corr['studytime'] > 0.2:
+    recommendations.append("⏳ **Study Time Optimization**: Boosting study time improves performance. Offer study planners, time management bootcamps, and quiet zones at school.")
 
-if corr['absences'] < -0.2:
-    recommendations.append("🏫 **Absenteeism**: Higher absenteeism negatively impacts performance. Consider attendance incentives and parental counseling.")
+if 'absences' in important_features and corr['absences'] < -0.2:
+    recommendations.append("🚸 **Reduce Absenteeism**: Missed classes hurt grades. Collaborate with families, track patterns, and explore hybrid attendance options for frequent absentees.")
 
-if corr['traveltime'] < -0.1:
-    recommendations.append("🚌 **Travel Time**: Long commute times reduce study opportunities. Suggest community learning centers or hybrid/online classes.")
+if 'traveltime' in important_features and corr['traveltime'] < -0.1:
+    recommendations.append("🚍 **Long Commute Risks**: Long travel affects learning. Suggest satellite learning centers, flexible timings, or remote digital classes.")
 
-if not recommendations:
-    st.warning("No strong actionable insights found. Consider checking more features or using feature engineering.")
-else:
+if 'G1' in important_features or 'G2' in important_features:
+    recommendations.append("📈 **Continuous Monitoring**: Early grades (G1, G2) are key indicators. Start academic interventions and parent-teacher meetings early based on first-term results.")
+
+# 🧭 Output
+if recommendations:
+    st.markdown("### 🎯 Personalized Interventions")
     for rec in recommendations:
         st.info(rec)
+else:
+    st.warning("No strong recommendations based on top features. Try exploring more data or engineered features.")
+
 
 # 📥 Downloadable Recommendation Report
 st.subheader("6. Downloadable Report")
