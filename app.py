@@ -345,9 +345,11 @@ if best_model_name == "Random Forest":
 # 📌 5. AI-Driven Socioeconomic Recommendations
 st.subheader("📌 5. AI-Driven Recommendations for Academic Support")
 
-# Assuming 'features' and 'trained_models' are defined earlier in your code
-# 'corr' is expected to be a pandas DataFrame of correlation values, 
-# for instance: corr = df.corr() where df is your DataFrame with student data
+# Ensure you only use numeric columns for correlation
+numeric_columns = df.select_dtypes(include=['float64', 'int64']).columns
+
+# Calculate correlation only on numeric columns
+corr = df[numeric_columns].corr()
 
 # 🧠 Use feature importance from best model (if applicable)
 important_features = []
@@ -363,10 +365,6 @@ if best_model_name == "Random Forest":
 
 # 📊 Combine correlations + importance for better reasoning
 recommendations = []
-
-# Check if 'corr' has been defined as a correlation matrix
-if 'corr' not in locals():
-    corr = df.corr()  # assuming df is your DataFrame with numeric data
 
 # 🎯 Better Recommendations Logic
 if 'Medu' in important_features or 'Fedu' in important_features:
