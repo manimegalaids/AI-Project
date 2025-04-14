@@ -272,70 +272,75 @@ with tabs[6]:
     ax.set_title("Correlation Matrix of Numeric Features")
     st.pyplot(fig)
 
-# 🧠 Model Comparison with Visual Explanation
-st.subheader("📊 Model Accuracy Comparison (R² Score for Final Grade Prediction)")
+# 4. 📊 Model Accuracy Comparison (R² Score for Final Grade Prediction)
+st.subheader("📊 4. Model Accuracy Comparison")
 
-# 🎯 Select features and target
+from sklearn.metrics import r2_score
+
+# 🔁 Function to train and evaluate models
+def train_models(X_train, X_test, y_train, y_test):
+    models = {
+        "Random Forest": RandomForestRegressor(random_state=42),
+        "XGBoost": XGBRegressor(random_state=42),
+        "Bayesian Ridge": BayesianRidge()
+    }
+    scores = {}
+    trained_models = {}
+    for name, model in models.items():
+        model.fit(X_train, y_train)
+        preds = model.predict(X_test)
+        score = r2_score(y_test, preds)
+        scores[name] = score
+        trained_models[name] = model
+    return scores, trained_models
+
+# ⚙️ Prepare Data
 features = ['age', 'Medu', 'Fedu', 'traveltime', 'studytime', 'failures', 'absences', 'G1', 'G2']
 X = df[features]
 y = df['G3']
 
-# ⚙️ Scale and split
 scaler = MinMaxScaler()
 X_scaled = scaler.fit_transform(X)
 X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 
-# 🤖 Define models
-models = {
-    "Random Forest": RandomForestRegressor(random_state=42),
-    "XGBoost": XGBRegressor(random_state=42),
-    "Bayesian Ridge": BayesianRidge()
-}
+# 📈 Train and get scores
+scores, trained_models = train_models(X_train, X_test, y_train, y_test)
 
-# 🧪 Train and evaluate
-scores = {}
-for name, model in models.items():
-    model.fit(X_train, y_train)
-    preds = model.predict(X_test)
-    scores[name] = r2_score(y_test, preds)
+# 🔍 Best model detection
+best_model_name = max(scores, key=scores.get)
+best_score = scores[best_model_name]
 
-# 📈 Horizontal Bar Chart with Annotation
-import matplotlib.pyplot as plt
-
-model_names = list(scores.keys())
-r2_values = list(scores.values())
-colors = ['green', 'orange', 'blue']
-
+# 📊 Plot Horizontal Bar Chart
 fig, ax = plt.subplots(figsize=(8, 4))
-bars = ax.barh(model_names, r2_values, color=colors)
+colors = ['green' if m == best_model_name else 'skyblue' for m in scores.keys()]
+bars = ax.barh(list(scores.keys()), list(scores.values()), color=colors)
 
 for bar in bars:
-    width = bar.get_width()
-    ax.text(width + 0.01, bar.get_y() + bar.get_height()/2,
-            f'{width:.2f}', va='center', fontsize=10)
+    ax.text(bar.get_width() + 0.01, bar.get_y() + bar.get_height()/2,
+            f'{bar.get_width():.2f}', va='center', fontsize=10)
 
 ax.set_xlim(0, 1)
 ax.set_xlabel("R² Score")
-ax.set_title("Model Comparison: R² Score for Predicting Final Grade (G3)")
+ax.set_title("🔍 Model Comparison: R² Score for Predicting Final Grade (G3)")
+
 st.pyplot(fig)
 
-# ✅ Best Model Highlight
-best_model = max(scores, key=scores.get)
-st.success(f"🎯 Best Performing Model: **{best_model}** with R² Score of **{scores[best_model]:.2f}**")
+# ✅ Best model output
+st.success(f"🏆 Best Model: **{best_model_name}** with R² Score of **{best_score:.2f}**")
 
-# 🔍 Optional: Feature Importance (for RF)
-if best_model == "Random Forest":
-    st.markdown("### 📊 Feature Importance from Random Forest")
+# 📌 Optional: Feature importance if applicable
+if best_model_name == "Random Forest":
+    st.markdown("### 📌 Top Contributing Features (Random Forest)")
+    feature_imp = trained_models[best_model_name].feature_importances_
     importance_df = pd.DataFrame({
-        "Feature": features,
-        "Importance": models[best_model].feature_importances_
+        'Feature': features,
+        'Importance': feature_imp
     }).sort_values(by="Importance", ascending=False)
 
     fig2, ax2 = plt.subplots()
-    sns.barplot(data=importance_df, x="Importance", y="Feature", palette="viridis", ax=ax2)
-    ax2.set_title("Random Forest Feature Importance")
+    sns.barplot(data=importance_df, x='Importance', y='Feature', palette='crest', ax=ax2)
+    ax2.set_title("Feature Importance from Random Forest")
     st.pyplot(fig2)
-
 
 # 📌 AI-Driven Socioeconomic Recommendations
 st.subheader("5. AI-Driven Recommendations for Academic Support")
