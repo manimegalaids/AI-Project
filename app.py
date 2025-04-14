@@ -6,6 +6,7 @@ import speech_recognition as sr
 import pyttsx3
 import torch
 import datetime
+import joblib
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import BayesianRidge
@@ -28,8 +29,6 @@ def load_data():
 
 df = load_data()
 
-import streamlit as st
-import pandas as pd
 import io
 
 # Load dataset
@@ -345,35 +344,31 @@ if best_model_name == "Random Forest":
     ax2.set_title("Feature Importance from Random Forest")
     st.pyplot(fig2)
 
+# --- Load your dataset and model ---
+df = pd.read_csv("cleaned_student_data.csv")  # ✅ Use your cleaned dataset
+best_model = joblib.load("best_model.pkl")     # ✅ Your trained model
+
+# --- Feature columns used for prediction and clustering ---
+input_features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'traveltime', 'G1', 'G2']
+
+# --- Load your dataset and model ---
+df = pd.read_csv("cleaned_student_data.csv")  # ✅ Use your cleaned dataset
+best_model = joblib.load("best_model.pkl")     # ✅ Your trained model
+
+# --- Feature columns used for prediction and clustering ---
+input_features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'traveltime', 'G1', 'G2']
+
+# --- Select student data by row index ---
 st.subheader("📌 5. Smart AI Recommendations for Student Support")
+st.markdown("#### Select a student from dataset")
 
-# 🧑‍🎓 Input Section
-st.markdown("#### Enter student profile")
-studytime = st.selectbox("Study Time (1=low to 4=high)", [1, 2, 3, 4])
-failures = st.slider("Number of Past Class Failures", 0, 4, 0)
-absences = st.slider("Number of Absences", 0, 30, 0)
-Medu = st.selectbox("Mother's Education Level (0=none to 4=higher ed)", [0, 1, 2, 3, 4])
-Fedu = st.selectbox("Father's Education Level (0=none to 4=higher ed)", [0, 1, 2, 3, 4])
-traveltime = st.selectbox("Travel Time to School (1=short to 4=very long)", [1, 2, 3, 4])
-G1 = st.slider("First Period Grade (G1)", 0, 20, 10)
-G2 = st.slider("Second Period Grade (G2)", 0, 20, 10)
+selected_index = st.selectbox("Choose a student record", df.index)
+student_data = df.loc[[selected_index]]
 
-# 🔍 Data Preparation
-input_data = pd.DataFrame([{
-    'studytime': studytime,
-    'failures': failures,
-    'absences': absences,
-    'Medu': Medu,
-    'Fedu': Fedu,
-    'traveltime': traveltime,
-    'G1': G1,
-    'G2': G2
-}])
+# --- Predict final grade ---
+predicted_G3 = best_model.predict(student_data[input_features])[0]
 
-# 🤖 Predict G3
-predicted_G3 = best_model.predict(input_data)[0]
-
-# 🎯 Score-based Risk Meter
+# --- Risk Meter ---
 if predicted_G3 >= 15:
     risk_label = "🟢 Low Risk"
     color = "green"
@@ -387,39 +382,37 @@ else:
 st.markdown(f"### 🧠 Predicted Final Grade (G3): **{predicted_G3:.2f}**")
 st.markdown(f"### 📊 Risk Level: <span style='color:{color}; font-size:22px'>{risk_label}</span>", unsafe_allow_html=True)
 
-# 🧬 Dynamic Clustering
-# You must load your full original dataset without G3
-full_data = pd.read_csv("cleaned_student_data.csv")  # Replace with your dataset path
-features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'traveltime', 'G1', 'G2']
+# --- Dynamic Clustering ---
 scaler = StandardScaler()
-X_scaled = scaler.fit_transform(full_data[features])
+X_scaled = scaler.fit_transform(df[input_features])
 
 kmeans = KMeans(n_clusters=5, random_state=42)
-full_data['Cluster'] = kmeans.fit_predict(X_scaled)
+df['Cluster'] = kmeans.fit_predict(X_scaled)
 
-# Find cluster for current student
-input_scaled = scaler.transform(input_data)
+# --- Predict cluster for selected student ---
+input_scaled = scaler.transform(student_data[input_features])
 student_cluster = kmeans.predict(input_scaled)[0]
+cluster_profile = df[df['Cluster'] == student_cluster][input_features].mean()
 
-# 🧠 Cluster Profiling
-cluster_profile = full_data[full_data['Cluster'] == student_cluster][features].mean()
-
-# 🧠 Generate Smart, Data-Driven Insights
+# --- Dynamic Recommendation Logic ---
 recommendations = []
 
-# These rules are now dynamic — based on **cluster** behavior vs **individual student**
-if input_data['absences'].values[0] > cluster_profile['absences']:
+if student_data['absences'].values[0] > cluster_profile['absences']:
     recommendations.append("📉 You have more absences than peers. Try to improve attendance consistency.")
-if input_data['failures'].values[0] > cluster_profile['failures']:
+
+if student_data['failures'].values[0] > cluster_profile['failures']:
     recommendations.append("📚 You're at a higher risk of failure than similar students. Seek mentoring support.")
-if input_data['studytime'].values[0] < cluster_profile['studytime']:
+
+if student_data['studytime'].values[0] < cluster_profile['studytime']:
     recommendations.append("⏳ Increase study time to match top-performing peers in your cluster.")
+
 if predicted_G3 < cluster_profile[['G1', 'G2']].mean():
     recommendations.append("📛 Your projected grade is below peer average. Early intervention recommended.")
-if G2 - G1 < 0:
+
+if student_data['G2'].values[0] - student_data['G1'].values[0] < 0:
     recommendations.append("📉 Your progress is declining. Review subjects with the lowest performance.")
 
-# ✨ Show Recommendations
+# --- Show Recommendations ---
 st.markdown("### 🎯 Personalized AI Recommendations")
 if recommendations:
     for rec in recommendations:
@@ -427,9 +420,9 @@ if recommendations:
 else:
     st.info("👍 You're on track compared to similar students!")
 
-# 💾 Save Entry
-if st.button("💾 Save Student Profile + Insights"):
-    entry = input_data.copy()
+# --- Save Output to CSV ---
+if st.button("💾 Save Student Insights"):
+    entry = student_data.copy()
     entry['predicted_G3'] = predicted_G3
     entry['risk_level'] = risk_label
     entry['cluster'] = student_cluster
@@ -444,7 +437,6 @@ if st.button("💾 Save Student Profile + Insights"):
 
     new_log.to_csv("dynamic_recommendation_log.csv", index=False)
     st.success("✅ Data saved to dynamic_recommendation_log.csv")
-
 # 📥 Downloadable Recommendation Report
 st.subheader("6. Downloadable Report")
 if st.button("📤 Download AI Recommendations"):
