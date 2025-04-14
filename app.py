@@ -198,8 +198,8 @@ else:
 # 📊 Section 3: Attribute Comparison with Final Grade (G3)
 st.header("📊 3. Attribute Comparison with Final Grade (G3)")
 
-# 🧠 Select columns
-numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
+# 🧠 Select columns - Exclude G3 from numeric selection
+numeric_cols = [col for col in df.select_dtypes(include=['int64', 'float64']).columns if col != 'G3']
 categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
 
 st.markdown("### 🎯 Select Features to Compare with Final Grade (G3)")
@@ -214,6 +214,8 @@ if selected_numeric:
         sns.scatterplot(data=df, x=col, y='G3', ax=ax)
         ax.set_title(f"Scatter Plot: {col} vs G3")
         st.pyplot(fig)
+else:
+    st.info("Please select at least one numeric feature to view scatter plots.")
 
 # 2️⃣ Box Plots: Categorical vs G3
 if selected_categorical:
@@ -223,6 +225,8 @@ if selected_categorical:
         sns.boxplot(data=df, x=col, y='G3', ax=ax)
         ax.set_title(f"Box Plot: {col} vs G3")
         st.pyplot(fig)
+else:
+    st.info("Please select at least one categorical feature to view box plots.")
 
 # 🧠 Model Comparison
 st.subheader("4. Model Accuracy Comparison")
