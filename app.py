@@ -272,22 +272,12 @@ with tabs[6]:
     ax.set_title("Correlation Matrix of Numeric Features")
     st.pyplot(fig)
 
-# 📊 Section 4: Model Accuracy Comparison
-st.header("🧠 4. Model Accuracy & Feature Importance")
-
-with st.expander("📌 What is Model Accuracy (R² Score)?", expanded=False):
-    st.markdown("""
-    **R² Score (Coefficient of Determination)** tells us how well the model's predictions match the actual values.
-    - **R² = 1.0**: Perfect prediction
-    - **R² = 0.0**: No better than guessing the average
-    - The **higher**, the **better** the model performance.
-    """)
-
-# 🎯 Select features & scale data
+# 🎯 Select features and target
 features = ['age', 'Medu', 'Fedu', 'traveltime', 'studytime', 'failures', 'absences', 'G1', 'G2']
 X = df[features]
 y = df['G3']
 
+# ⚙️ Scale and split
 scaler = MinMaxScaler()
 X_scaled = scaler.fit_transform(X)
 X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
@@ -298,45 +288,49 @@ models = {
     "XGBoost": XGBRegressor(random_state=42),
     "Bayesian Ridge": BayesianRidge()
 }
-scores = {}
 
-# 🔁 Train & evaluate models
+# 🧪 Train and evaluate
+scores = {}
 for name, model in models.items():
     model.fit(X_train, y_train)
     preds = model.predict(X_test)
     scores[name] = r2_score(y_test, preds)
 
-# 🧾 Display scores
-st.markdown("### 🔍 Model R² Scores (Higher is Better)")
-score_df = pd.DataFrame(list(scores.items()), columns=["Model", "R² Score"]).sort_values(by="R² Score", ascending=False)
-st.dataframe(score_df.style.background_gradient(cmap='Greens'))
+# 📈 Horizontal Bar Chart with Annotation
+import matplotlib.pyplot as plt
 
-# 📌 Best model
-best_model = score_df.iloc[0]['Model']
-best_score = score_df.iloc[0]['R² Score']
-st.success(f"✅ **Best Performing Model:** {best_model} with R² Score = {best_score:.2f}")
+model_names = list(scores.keys())
+r2_values = list(scores.values())
+colors = ['green', 'orange', 'blue']
 
-# 🌟 Bar chart of all model scores
-fig, ax = plt.subplots()
-sns.barplot(data=score_df, x='Model', y='R² Score', palette='viridis')
-ax.set_ylim(0, 1)
-ax.set_title("Model Performance Comparison (R² Score)")
+fig, ax = plt.subplots(figsize=(8, 4))
+bars = ax.barh(model_names, r2_values, color=colors)
+
+for bar in bars:
+    width = bar.get_width()
+    ax.text(width + 0.01, bar.get_y() + bar.get_height()/2,
+            f'{width:.2f}', va='center', fontsize=10)
+
+ax.set_xlim(0, 1)
+ax.set_xlabel("R² Score")
+ax.set_title("Model Comparison: R² Score for Predicting Final Grade (G3)")
 st.pyplot(fig)
 
-# 📊 Feature Importance for Random Forest
+# ✅ Best Model Highlight
+best_model = max(scores, key=scores.get)
+st.success(f"🎯 Best Performing Model: **{best_model}** with R² Score of **{scores[best_model]:.2f}**")
+
+# 🔍 Optional: Feature Importance (for RF)
 if best_model == "Random Forest":
-    st.subheader("📊 Feature Importance (Random Forest)")
+    st.markdown("### 📊 Feature Importance from Random Forest")
     importance_df = pd.DataFrame({
         "Feature": features,
         "Importance": models[best_model].feature_importances_
     }).sort_values(by="Importance", ascending=False)
 
-    st.dataframe(importance_df.style.background_gradient(cmap='Blues'))
-
-    # 📈 Visual chart
     fig2, ax2 = plt.subplots()
-    sns.barplot(data=importance_df, x="Importance", y="Feature", palette="Blues_d")
-    ax2.set_title("Feature Importance (Random Forest)")
+    sns.barplot(data=importance_df, x="Importance", y="Feature", palette="viridis", ax=ax2)
+    ax2.set_title("Random Forest Feature Importance")
     st.pyplot(fig2)
 
 # 📌 AI-Driven Socioeconomic Recommendations
