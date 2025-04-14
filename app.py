@@ -198,35 +198,79 @@ else:
 # 📊 Section 3: Attribute Comparison with Final Grade (G3)
 st.header("📊 3. Attribute Comparison with Final Grade (G3)")
 
-# 🧠 Select columns - Exclude G3 from numeric selection
-numeric_cols = [col for col in df.select_dtypes(include=['int64', 'float64']).columns if col != 'G3']
+# 📦 Data Type Grouping
+numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
 categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
 
-st.markdown("### 🎯 Select Features to Compare with Final Grade (G3)")
-selected_numeric = st.multiselect("Select numeric features", options=numeric_cols, default=['studytime', 'absences'])
-selected_categorical = st.multiselect("Select categorical features", options=categorical_cols, default=['sex', 'school'])
+# 🎛️ Tabs for plot types
+tabs = st.tabs(["🔢 Scatter Plot", "🧰 Box Plot", "📊 Bar Plot", "📈 Histogram", "🎻 Violin Plot", "🥧 Pie Chart", "🔥 Correlation Heatmap"])
 
-# 1️⃣ Scatter Plots: Numeric vs G3
-if selected_numeric:
-    st.subheader("🔢 Scatter Plots: Numeric Features vs Final Grade (G3)")
+# 1️⃣ Scatter Plot Tab
+with tabs[0]:
+    st.subheader("🔢 Scatter Plot: Numeric Features vs Final Grade (G3)")
+    selected_numeric = st.multiselect("Select numeric features", options=numeric_cols, default=['studytime', 'absences'])
     for col in selected_numeric:
-        fig, ax = plt.subplots()
-        sns.scatterplot(data=df, x=col, y='G3', ax=ax)
-        ax.set_title(f"Scatter Plot: {col} vs G3")
-        st.pyplot(fig)
-else:
-    st.info("Please select at least one numeric feature to view scatter plots.")
+        if col != 'G3':
+            fig, ax = plt.subplots()
+            sns.scatterplot(data=df, x=col, y='G3', ax=ax)
+            ax.set_title(f"{col} vs G3")
+            st.pyplot(fig)
 
-# 2️⃣ Box Plots: Categorical vs G3
-if selected_categorical:
-    st.subheader("🧰 Box Plots: Categorical Features vs Final Grade (G3)")
-    for col in selected_categorical:
+# 2️⃣ Box Plot Tab
+with tabs[1]:
+    st.subheader("🧰 Box Plot: Categorical Features vs Final Grade (G3)")
+    selected_box = st.multiselect("Select categorical features", options=categorical_cols, default=['sex', 'school'])
+    for col in selected_box:
         fig, ax = plt.subplots()
         sns.boxplot(data=df, x=col, y='G3', ax=ax)
-        ax.set_title(f"Box Plot: {col} vs G3")
+        ax.set_title(f"{col} vs G3")
         st.pyplot(fig)
-else:
-    st.info("Please select at least one categorical feature to view box plots.")
+
+# 3️⃣ Bar Plot Tab
+with tabs[2]:
+    st.subheader("📊 Bar Plot: Average Final Grade by Category")
+    selected_bar = st.selectbox("Choose a categorical feature", options=categorical_cols)
+    avg_data = df.groupby(selected_bar)['G3'].mean().reset_index()
+    fig, ax = plt.subplots()
+    sns.barplot(data=avg_data, x=selected_bar, y='G3', ax=ax)
+    ax.set_title(f"Average G3 by {selected_bar}")
+    st.pyplot(fig)
+
+# 4️⃣ Histogram Tab
+with tabs[3]:
+    st.subheader("📈 Histogram: Distribution of Final Grades (G3)")
+    fig, ax = plt.subplots()
+    sns.histplot(df['G3'], bins=10, kde=True, ax=ax)
+    ax.set_title("Distribution of G3")
+    st.pyplot(fig)
+
+# 5️⃣ Violin Plot Tab
+with tabs[4]:
+    st.subheader("🎻 Violin Plot: G3 Distribution by Category")
+    selected_violin = st.selectbox("Select a categorical feature", options=categorical_cols, key='violin')
+    fig, ax = plt.subplots()
+    sns.violinplot(data=df, x=selected_violin, y='G3', ax=ax)
+    ax.set_title(f"Violin Plot of G3 by {selected_violin}")
+    st.pyplot(fig)
+
+# 6️⃣ Pie Chart Tab
+with tabs[5]:
+    st.subheader("🥧 Pie Chart: Distribution of Categorical Feature")
+    selected_pie = st.selectbox("Choose a feature for pie chart", options=categorical_cols, key='pie')
+    pie_data = df[selected_pie].value_counts()
+    fig, ax = plt.subplots()
+    ax.pie(pie_data, labels=pie_data.index, autopct='%1.1f%%', startangle=90)
+    ax.axis('equal')
+    ax.set_title(f"Distribution of {selected_pie}")
+    st.pyplot(fig)
+
+# 7️⃣ Heatmap Tab
+with tabs[6]:
+    st.subheader("🔥 Correlation Heatmap")
+    fig, ax = plt.subplots(figsize=(10, 8))
+    sns.heatmap(df.corr(numeric_only=True), annot=True, cmap='coolwarm', ax=ax)
+    ax.set_title("Correlation Matrix of Numeric Features")
+    st.pyplot(fig)
 
 # 🧠 Model Comparison
 st.subheader("4. Model Accuracy Comparison")
