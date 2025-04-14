@@ -29,10 +29,106 @@ def load_data():
 
 df = load_data()
 
-# 📊 Dataset Preview
-st.subheader("1. Dataset Preview")
-st.dataframe(df.head())
-st.markdown(f"📌 Shape: {df.shape[0]} rows × {df.shape[1]} columns")
+import streamlit as st
+import pandas as pd
+import io
+
+# Load dataset
+# df = pd.read_csv('your_dataset.csv')  # Uncomment this in your project
+
+# Rename columns to full names for better readability
+readable_df = df.rename(columns={
+    "school": "School",
+    "sex": "Gender",
+    "age": "Age",
+    "address": "Address Type",
+    "famsize": "Family Size",
+    "Pstatus": "Parent Status",
+    "Medu": "Mother's Education",
+    "Fedu": "Father's Education",
+    "Mjob": "Mother's Job",
+    "Fjob": "Father's Job",
+    "reason": "Reason for School",
+    "guardian": "Guardian",
+    "traveltime": "Travel Time",
+    "studytime": "Study Time",
+    "failures": "Past Failures",
+    "schoolsup": "School Support",
+    "famsup": "Family Support",
+    "paid": "Extra Paid Classes",
+    "activities": "Extracurricular Activities",
+    "nursery": "Attended Nursery",
+    "higher": "Wants Higher Education",
+    "internet": "Internet Access",
+    "romantic": "Romantic Relationship",
+    "famrel": "Family Relationship",
+    "freetime": "Free Time",
+    "goout": "Going Out Frequency",
+    "Dalc": "Weekday Alcohol Use",
+    "Walc": "Weekend Alcohol Use",
+    "health": "Health Status",
+    "absences": "Absences",
+    "G1": "Grade 1",
+    "G2": "Grade 2",
+    "G3": "Final Grade"
+})
+
+st.subheader("📊 1. Dataset Preview (User-Friendly Column Names)")
+
+# --- Search/filtering ---
+with st.expander("🔍 Filter or Search Dataset"):
+    filter_column = st.selectbox("Select column to filter", readable_df.columns)
+    filter_value = st.text_input(f"Enter value to search in {filter_column}")
+    if filter_value:
+        filtered_df = readable_df[readable_df[filter_column].astype(str).str.contains(filter_value, case=False)]
+    else:
+        filtered_df = readable_df
+
+st.dataframe(filtered_df.head(10))
+st.markdown(f"📌 Shape: {filtered_df.shape[0]} rows × {filtered_df.shape[1]} columns")
+
+# --- Download button ---
+csv_buffer = io.StringIO()
+filtered_df.to_csv(csv_buffer, index=False)
+st.download_button(
+    label="⬇️ Download Filtered Dataset as CSV",
+    data=csv_buffer.getvalue(),
+    file_name='filtered_academic_data.csv',
+    mime='text/csv'
+)
+
+# --- Column Descriptions ---
+with st.expander("ℹ️ Column Descriptions"):
+    st.markdown("""
+    - **Mother's Education / Father's Education**: Level of education (0 = none, 4 = higher education)
+    - **Parent Status**: Whether parents live together or apart
+    - **Travel Time**: Time to reach school (1 = <15 mins, 4 = >1 hour)
+    - **Study Time**: Weekly study time (1 = <2 hrs, 4 = >10 hrs)
+    - **School Support**: Extra academic support from school (yes/no)
+    - **Family Support**: Extra support from family (yes/no)
+    - **Final Grade**: Student’s final academic performance (G3)
+    - **Internet Access**: Whether the student has internet access at home
+    - **Romantic Relationship**: If student is currently in a romantic relationship
+    - **Absences**: Number of days the student was absent
+    """)
+
+# --- Data summary ---
+st.subheader("📈 2. Dataset Summary Statistics")
+st.dataframe(filtered_df.describe(include='all'))
+
+# --- Quick visual summary ---
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+st.subheader("📊 3. Grade Distribution Plot")
+fig, ax = plt.subplots()
+sns.histplot(filtered_df["Final Grade"], bins=10, kde=True, ax=ax)
+st.pyplot(fig)
+
+st.subheader("🧠 Correlation with Final Grade")
+correlation = filtered_df.corr(numeric_only=True)["Final Grade"].sort_values(ascending=False)
+st.bar_chart(correlation)
+
 
 # 🔎 Data Quality Insights
 st.subheader("2. Data Quality Overview")
