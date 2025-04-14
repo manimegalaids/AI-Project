@@ -195,52 +195,34 @@ else:
     st.success("✅ All columns have more than one unique value.")
 
 
-# Section 3: Attribute Comparison with Final Grade (G3)
+# 📊 Section 3: Attribute Comparison with Final Grade (G3)
 st.header("📊 3. Attribute Comparison with Final Grade (G3)")
-st.markdown("""
-This section shows the relationship between each feature and the final student grade (G3) using:
-- A **Lollipop Chart** to visualize correlation values.
-- A **Random Forest** model to extract and show feature importances.
-""")
 
-# 🔧 Define selected_cols to avoid NameError
-selected_cols = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
+# 🧠 Select columns
+numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
+categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
 
-# 1. Lollipop Chart for Correlation with G3
-st.subheader("🔗 Correlation of Attributes with Final Grade (G3)")
+st.markdown("### 🎯 Select Features to Compare with Final Grade (G3)")
+selected_numeric = st.multiselect("Select numeric features", options=numeric_cols, default=['studytime', 'absences'])
+selected_categorical = st.multiselect("Select categorical features", options=categorical_cols, default=['sex', 'school'])
 
-# Calculate correlations
-corr = df[selected_cols].corr()['G3'].drop('G3').sort_values()
+# 1️⃣ Scatter Plots: Numeric vs G3
+if selected_numeric:
+    st.subheader("🔢 Scatter Plots: Numeric Features vs Final Grade (G3)")
+    for col in selected_numeric:
+        fig, ax = plt.subplots()
+        sns.scatterplot(data=df, x=col, y='G3', ax=ax)
+        ax.set_title(f"Scatter Plot: {col} vs G3")
+        st.pyplot(fig)
 
-# Plot Lollipop Chart
-fig, ax = plt.subplots(figsize=(10, 6))
-ax.hlines(y=corr.index, xmin=0, xmax=corr.values, color='skyblue', linewidth=2)
-ax.plot(corr.values, corr.index, "o", color='blue')
-ax.axvline(0, color='gray', linestyle='--', linewidth=1)
-ax.set_xlabel("Correlation with Final Grade (G3)")
-ax.set_title("Lollipop Chart: Feature Correlation with Final Grade (G3)")
-st.pyplot(fig)
-
-# 2. Feature Importance from Random Forest
-st.subheader("🌲 Feature Importance from Random Forest Model")
-
-# Prepare data
-X = df[selected_cols].drop(columns=['G3'])
-y = df['G3']
-
-# Train model
-model = RandomForestRegressor(random_state=42)
-model.fit(X, y)
-
-# Get feature importances
-importances = pd.Series(model.feature_importances_, index=X.columns).sort_values()
-
-# Plot Horizontal Bar Chart
-fig2, ax2 = plt.subplots(figsize=(10, 6))
-importances.plot(kind='barh', color='teal', ax=ax2)
-ax2.set_xlabel("Importance Score")
-ax2.set_title("Random Forest: Feature Importance for Final Grade (G3)")
-st.pyplot(fig2)
+# 2️⃣ Box Plots: Categorical vs G3
+if selected_categorical:
+    st.subheader("🧰 Box Plots: Categorical Features vs Final Grade (G3)")
+    for col in selected_categorical:
+        fig, ax = plt.subplots()
+        sns.boxplot(data=df, x=col, y='G3', ax=ax)
+        ax.set_title(f"Box Plot: {col} vs G3")
+        st.pyplot(fig)
 
 # 🧠 Model Comparison
 st.subheader("4. Model Accuracy Comparison")
