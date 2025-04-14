@@ -343,60 +343,59 @@ if best_model_name == "Random Forest":
     sns.barplot(data=importance_df, x='Importance', y='Feature', palette='crest', ax=ax2)
     ax2.set_title("Feature Importance from Random Forest")
     st.pyplot(fig2)
+import streamlit as st
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
 
-# 📌 5. AI-Driven Socioeconomic Recommendations
+# Load your cleaned dataset
+# df = pd.read_csv("your_dataset.csv")  # Make sure to load your dataset if not already
+
 st.subheader("📌 5. AI-Driven Recommendations for Academic Support")
 
-import pandas as pd
-import numpy as np
-import streamlit as st
-from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler
-
-# Assuming df is your DataFrame containing the student data
-# First, we need to scale the numeric columns for clustering
+# Scale numeric features for clustering
 numeric_columns = df.select_dtypes(include=['float64', 'int64']).columns
 scaler = StandardScaler()
 scaled_data = scaler.fit_transform(df[numeric_columns])
 
-# Apply KMeans clustering to segment students
-kmeans = KMeans(n_clusters=5, random_state=42)  # You can adjust the number of clusters
+# Apply KMeans clustering
+kmeans = KMeans(n_clusters=5, random_state=42)
 df['Cluster'] = kmeans.fit_predict(scaled_data)
 
-# Example function to generate tailored recommendations based on the cluster
+# Function to generate recommendations for a cluster
 def generate_recommendations_for_cluster(cluster_id, df):
     cluster_data = df[df['Cluster'] == cluster_id]
     recommendations = []
-    
-    # Example tailored recommendations based on the cluster behavior
-    if cluster_data['failures'].mean() > 2:
-        recommendations.append("🔁 **Past Failures Matter**: Students in this group tend to have more failures. Provide emotional and academic counseling to reduce failure rates.")
-    
-    if cluster_data['studytime'].mean() < 2:
-        recommendations.append("⏳ **Study Time Optimization**: Students in this group are not spending enough study time. Consider offering time management workshops and better study environment options.")
-    
-    if cluster_data['absences'].mean() > 10:
-        recommendations.append("🚸 **Reduce Absenteeism**: High absenteeism has been observed. Encourage collaboration with families and explore flexible school attendance options.")
 
-    # Add more rules based on other features if necessary
+    if cluster_data['failures'].mean() > 2:
+        recommendations.append("🔁 **Past Failures Matter**: This group shows frequent failures. Suggest academic mentoring and counseling.")
+
+    if cluster_data['studytime'].mean() < 2:
+        recommendations.append("⏳ **Study Time**: Limited study time detected. Recommend productivity sessions and guided study plans.")
+
+    if cluster_data['absences'].mean() > 10:
+        recommendations.append("🚸 **Reduce Absenteeism**: Frequent absences. Consider family outreach and flexible attendance options.")
+
+    if 'Medu' in cluster_data.columns and cluster_data['Medu'].mean() < 2:
+        recommendations.append("👩‍🏫 **Parental Education Impact**: Encourage family literacy programs and parent-school interaction.")
+
     return recommendations
 
-# Get recommendations for each cluster
-all_recommendations = {}
-for cluster_id in range(5):  # Assuming we have 5 clusters
-    all_recommendations[cluster_id] = generate_recommendations_for_cluster(cluster_id, df)
+# Dropdown to select a student by index
+selected_index = st.selectbox("Select a student (by row index)", df.index.tolist())
 
-# Now provide recommendations based on the student’s cluster
-student_cluster = df.loc[df['student_id'] == some_student_id, 'Cluster'].values[0]  # Get student's cluster ID
-cluster_recommendations = all_recommendations.get(student_cluster, [])
+# Get student cluster and recommendations
+student_cluster = df.loc[selected_index, 'Cluster']
+student_recommendations = generate_recommendations_for_cluster(student_cluster, df)
 
-# Display the recommendations
-if cluster_recommendations:
-    st.markdown("### 🎯 Personalized Interventions")
-    for rec in cluster_recommendations:
+# Display results
+st.markdown(f"### 🎯 Personalized Recommendations for Student at Index `{selected_index}`")
+if student_recommendations:
+    for rec in student_recommendations:
         st.info(rec)
 else:
-    st.warning("No strong recommendations based on cluster data.")
+    st.warning("No strong recommendations for this student.")
+
 
 # 📥 Downloadable Recommendation Report
 st.subheader("6. Downloadable Report")
