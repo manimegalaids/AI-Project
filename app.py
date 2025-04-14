@@ -162,14 +162,38 @@ st.bar_chart(correlation)
 
 # 🔎 Data Quality Insights
 st.subheader("2. Data Quality Overview")
+
+# --- Missing Data Overview ---
 missing = df.isnull().mean().sort_values(ascending=False)
+
 if missing.any():
     st.warning("⚠️ Missing Data Detected")
-    st.dataframe(missing[missing > 0])
+    st.dataframe(missing[missing > 0].apply(lambda x: f"{x*100:.2f}%", axis=0))
+
+    # 📊 Missing Data Bar Chart
+    st.bar_chart(missing[missing > 0])
+    
+    # Optional: Allow user to drop columns with too much missing data
+    if st.checkbox("🧹 Drop columns with more than 30% missing values"):
+        drop_cols = missing[missing > 0.3].index.tolist()
+        df.drop(columns=drop_cols, inplace=True)
+        st.success(f"Dropped columns: {', '.join(drop_cols)}")
 else:
     st.success("✅ No missing values in the dataset.")
-st.write("🔍 Unique Values per Feature:")
-st.dataframe(df.nunique().sort_values(ascending=False))
+
+# --- Unique Values Overview ---
+with st.expander("🔍 Unique Values per Feature"):
+    st.dataframe(df.nunique().sort_values(ascending=False))
+
+# --- Low Variance Features ---
+st.markdown("📉 **Low Variance Features (May be less useful in ML models)**")
+low_variance = df.nunique() <= 1
+if low_variance.any():
+    st.warning("⚠️ Columns with only one unique value:")
+    st.write(df.columns[low_variance].tolist())
+else:
+    st.success("✅ All columns have more than one unique value.")
+
 
 # Section 3: Attribute Comparison with Final Grade (G3)
 st.header("📊 3. Attribute Comparison with Final Grade (G3)")
