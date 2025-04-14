@@ -345,7 +345,8 @@ if best_model_name == "Random Forest":
     st.pyplot(fig2)
 
 # --- Load your dataset and model ---
-df = pd.read_csv("cleaned_student_data.csv")  # ✅ Use your cleaned dataset
+df_mat = pd.read_csv("student-mat.csv", sep=';')
+df_por = pd.read_csv("student-por.csv", sep=';')
 best_model = joblib.load("best_model.pkl")     # ✅ Your trained model
 
 # --- Feature columns used for prediction and clustering ---
