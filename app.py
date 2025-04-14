@@ -344,18 +344,11 @@ if best_model_name == "Random Forest":
     sns.barplot(data=importance_df, x='Importance', y='Feature', palette='crest', ax=ax2)
     ax2.set_title("Feature Importance from Random Forest")
     st.pyplot(fig2)
-import streamlit as st
-import pandas as pd
-from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans
 
-# Load your cleaned dataset
-# df = pd.read_csv("your_dataset.csv")  # Make sure to load your dataset if not already
-st.subheader("📌 5. Advanced AI-Driven Student Recommendations")
+st.subheader("📌 5. Smart AI Recommendations for Student Support")
 
-# 🚀 User input section
-st.markdown("#### 🧑‍🎓 Enter student profile")
-
+# 🧑‍🎓 Input Section
+st.markdown("#### Enter student profile")
 studytime = st.selectbox("Study Time (1=low to 4=high)", [1, 2, 3, 4])
 failures = st.slider("Number of Past Class Failures", 0, 4, 0)
 absences = st.slider("Number of Absences", 0, 30, 0)
@@ -365,8 +358,8 @@ traveltime = st.selectbox("Travel Time to School (1=short to 4=very long)", [1, 
 G1 = st.slider("First Period Grade (G1)", 0, 20, 10)
 G2 = st.slider("Second Period Grade (G2)", 0, 20, 10)
 
-# 🧮 Prepare input for prediction
-input_df = pd.DataFrame([{
+# 🔍 Data Preparation
+input_data = pd.DataFrame([{
     'studytime': studytime,
     'failures': failures,
     'absences': absences,
@@ -377,66 +370,80 @@ input_df = pd.DataFrame([{
     'G2': G2
 }])
 
-# ⚙️ Predict G3 using your trained model (e.g., RandomForest)
-# Replace `best_model` with your actual trained model
-predicted_G3 = best_model.predict(input_df)[0]
+# 🤖 Predict G3
+predicted_G3 = best_model.predict(input_data)[0]
 
-# 🟢🟡🔴 Risk Level
+# 🎯 Score-based Risk Meter
 if predicted_G3 >= 15:
-    risk_level = "🟢 Low Risk"
-    risk_color = "green"
+    risk_label = "🟢 Low Risk"
+    color = "green"
 elif predicted_G3 >= 10:
-    risk_level = "🟡 Moderate Risk"
-    risk_color = "orange"
+    risk_label = "🟡 Medium Risk"
+    color = "orange"
 else:
-    risk_level = "🔴 High Risk"
-    risk_color = "red"
+    risk_label = "🔴 High Risk"
+    color = "red"
 
-st.markdown(f"### 🧠 Predicted Final Grade (G3): **{predicted_G3:.1f}**")
-st.markdown(f"### 📊 Academic Risk Level: <span style='color:{risk_color}; font-size:22px'>{risk_level}</span>", unsafe_allow_html=True)
+st.markdown(f"### 🧠 Predicted Final Grade (G3): **{predicted_G3:.2f}**")
+st.markdown(f"### 📊 Risk Level: <span style='color:{color}; font-size:22px'>{risk_label}</span>", unsafe_allow_html=True)
 
-# 💡 Generate Recommendations
+# 🧬 Dynamic Clustering
+# You must load your full original dataset without G3
+full_data = pd.read_csv("cleaned_student_data.csv")  # Replace with your dataset path
+features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'traveltime', 'G1', 'G2']
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(full_data[features])
+
+kmeans = KMeans(n_clusters=5, random_state=42)
+full_data['Cluster'] = kmeans.fit_predict(X_scaled)
+
+# Find cluster for current student
+input_scaled = scaler.transform(input_data)
+student_cluster = kmeans.predict(input_scaled)[0]
+
+# 🧠 Cluster Profiling
+cluster_profile = full_data[full_data['Cluster'] == student_cluster][features].mean()
+
+# 🧠 Generate Smart, Data-Driven Insights
 recommendations = []
 
-if studytime < 2:
-    recommendations.append("⏳ **Boost Study Time**: Provide time management support and quiet learning zones.")
-if failures >= 2:
-    recommendations.append("🔁 **Failure Support**: One-on-one mentoring and remedial classes advised.")
-if absences > 10:
-    recommendations.append("🚸 **High Absences**: Consider flexible scheduling or family engagement.")
-if Medu <= 1 or Fedu <= 1:
-    recommendations.append("👨‍👩‍👧 **Low Parental Education**: Encourage family learning and support programs.")
-if traveltime >= 3:
-    recommendations.append("🚍 **Commute Risk**: Recommend online learning alternatives or local centers.")
-if G1 < 10 or G2 < 10:
-    recommendations.append("📉 **Low Early Grades**: Trigger early academic intervention and teacher check-ins.")
-if predicted_G3 < 10:
-    recommendations.append("📛 **AI Warning**: Final grade prediction is low. Prioritize academic recovery plans.")
+# These rules are now dynamic — based on **cluster** behavior vs **individual student**
+if input_data['absences'].values[0] > cluster_profile['absences']:
+    recommendations.append("📉 You have more absences than peers. Try to improve attendance consistency.")
+if input_data['failures'].values[0] > cluster_profile['failures']:
+    recommendations.append("📚 You're at a higher risk of failure than similar students. Seek mentoring support.")
+if input_data['studytime'].values[0] < cluster_profile['studytime']:
+    recommendations.append("⏳ Increase study time to match top-performing peers in your cluster.")
+if predicted_G3 < cluster_profile[['G1', 'G2']].mean():
+    recommendations.append("📛 Your projected grade is below peer average. Early intervention recommended.")
+if G2 - G1 < 0:
+    recommendations.append("📉 Your progress is declining. Review subjects with the lowest performance.")
 
-# ✨ Display Recommendations
-st.markdown("### 🎯 Personalized Recommendations")
+# ✨ Show Recommendations
+st.markdown("### 🎯 Personalized AI Recommendations")
 if recommendations:
     for rec in recommendations:
         st.success(rec)
 else:
-    st.info("👍 This student profile shows no critical academic risk.")
+    st.info("👍 You're on track compared to similar students!")
 
-# 💾 Save option
-if st.button("💾 Save Profile & Recommendations"):
-    log_entry = input_df.copy()
-    log_entry['predicted_G3'] = predicted_G3
-    log_entry['risk_level'] = risk_level
-    log_entry['recommendations'] = ' | '.join(recommendations)
-    log_entry['timestamp'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+# 💾 Save Entry
+if st.button("💾 Save Student Profile + Insights"):
+    entry = input_data.copy()
+    entry['predicted_G3'] = predicted_G3
+    entry['risk_level'] = risk_label
+    entry['cluster'] = student_cluster
+    entry['recommendations'] = ' | '.join(recommendations)
+    entry['timestamp'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     try:
-        prev = pd.read_csv("student_recommendation_log.csv")
-        log_df = pd.concat([prev, log_entry], ignore_index=True)
-    except FileNotFoundError:
-        log_df = log_entry
+        old = pd.read_csv("dynamic_recommendation_log.csv")
+        new_log = pd.concat([old, entry], ignore_index=True)
+    except:
+        new_log = entry
 
-    log_df.to_csv("student_recommendation_log.csv", index=False)
-    st.success("✅ Recommendation saved to student_recommendation_log.csv")
+    new_log.to_csv("dynamic_recommendation_log.csv", index=False)
+    st.success("✅ Data saved to dynamic_recommendation_log.csv")
 
 # 📥 Downloadable Recommendation Report
 st.subheader("6. Downloadable Report")
