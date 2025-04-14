@@ -272,6 +272,9 @@ with tabs[6]:
     ax.set_title("Correlation Matrix of Numeric Features")
     st.pyplot(fig)
 
+# 🧠 Model Comparison with Visual Explanation
+st.subheader("📊 Model Accuracy Comparison (R² Score for Final Grade Prediction)")
+
 # 🎯 Select features and target
 features = ['age', 'Medu', 'Fedu', 'traveltime', 'studytime', 'failures', 'absences', 'G1', 'G2']
 X = df[features]
@@ -332,6 +335,7 @@ if best_model == "Random Forest":
     sns.barplot(data=importance_df, x="Importance", y="Feature", palette="viridis", ax=ax2)
     ax2.set_title("Random Forest Feature Importance")
     st.pyplot(fig2)
+
 
 # 📌 AI-Driven Socioeconomic Recommendations
 st.subheader("5. AI-Driven Recommendations for Academic Support")
