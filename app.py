@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import speech_recognition as sr
 import pyttsx3
 import torch
+import datetime
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import BayesianRidge
@@ -350,52 +351,92 @@ from sklearn.cluster import KMeans
 
 # Load your cleaned dataset
 # df = pd.read_csv("your_dataset.csv")  # Make sure to load your dataset if not already
+st.subheader("📌 5. Advanced AI-Driven Student Recommendations")
 
-st.subheader("📌 5. AI-Driven Recommendations for Academic Support")
+# 🚀 User input section
+st.markdown("#### 🧑‍🎓 Enter student profile")
 
-# Scale numeric features for clustering
-numeric_columns = df.select_dtypes(include=['float64', 'int64']).columns
-scaler = StandardScaler()
-scaled_data = scaler.fit_transform(df[numeric_columns])
+studytime = st.selectbox("Study Time (1=low to 4=high)", [1, 2, 3, 4])
+failures = st.slider("Number of Past Class Failures", 0, 4, 0)
+absences = st.slider("Number of Absences", 0, 30, 0)
+Medu = st.selectbox("Mother's Education Level (0=none to 4=higher ed)", [0, 1, 2, 3, 4])
+Fedu = st.selectbox("Father's Education Level (0=none to 4=higher ed)", [0, 1, 2, 3, 4])
+traveltime = st.selectbox("Travel Time to School (1=short to 4=very long)", [1, 2, 3, 4])
+G1 = st.slider("First Period Grade (G1)", 0, 20, 10)
+G2 = st.slider("Second Period Grade (G2)", 0, 20, 10)
 
-# Apply KMeans clustering
-kmeans = KMeans(n_clusters=5, random_state=42)
-df['Cluster'] = kmeans.fit_predict(scaled_data)
+# 🧮 Prepare input for prediction
+input_df = pd.DataFrame([{
+    'studytime': studytime,
+    'failures': failures,
+    'absences': absences,
+    'Medu': Medu,
+    'Fedu': Fedu,
+    'traveltime': traveltime,
+    'G1': G1,
+    'G2': G2
+}])
 
-# Function to generate recommendations for a cluster
-def generate_recommendations_for_cluster(cluster_id, df):
-    cluster_data = df[df['Cluster'] == cluster_id]
-    recommendations = []
+# ⚙️ Predict G3 using your trained model (e.g., RandomForest)
+# Replace `best_model` with your actual trained model
+predicted_G3 = best_model.predict(input_df)[0]
 
-    if cluster_data['failures'].mean() > 2:
-        recommendations.append("🔁 **Past Failures Matter**: This group shows frequent failures. Suggest academic mentoring and counseling.")
-
-    if cluster_data['studytime'].mean() < 2:
-        recommendations.append("⏳ **Study Time**: Limited study time detected. Recommend productivity sessions and guided study plans.")
-
-    if cluster_data['absences'].mean() > 10:
-        recommendations.append("🚸 **Reduce Absenteeism**: Frequent absences. Consider family outreach and flexible attendance options.")
-
-    if 'Medu' in cluster_data.columns and cluster_data['Medu'].mean() < 2:
-        recommendations.append("👩‍🏫 **Parental Education Impact**: Encourage family literacy programs and parent-school interaction.")
-
-    return recommendations
-
-# Dropdown to select a student by index
-selected_index = st.selectbox("Select a student (by row index)", df.index.tolist())
-
-# Get student cluster and recommendations
-student_cluster = df.loc[selected_index, 'Cluster']
-student_recommendations = generate_recommendations_for_cluster(student_cluster, df)
-
-# Display results
-st.markdown(f"### 🎯 Personalized Recommendations for Student at Index `{selected_index}`")
-if student_recommendations:
-    for rec in student_recommendations:
-        st.info(rec)
+# 🟢🟡🔴 Risk Level
+if predicted_G3 >= 15:
+    risk_level = "🟢 Low Risk"
+    risk_color = "green"
+elif predicted_G3 >= 10:
+    risk_level = "🟡 Moderate Risk"
+    risk_color = "orange"
 else:
-    st.warning("No strong recommendations for this student.")
+    risk_level = "🔴 High Risk"
+    risk_color = "red"
 
+st.markdown(f"### 🧠 Predicted Final Grade (G3): **{predicted_G3:.1f}**")
+st.markdown(f"### 📊 Academic Risk Level: <span style='color:{risk_color}; font-size:22px'>{risk_level}</span>", unsafe_allow_html=True)
+
+# 💡 Generate Recommendations
+recommendations = []
+
+if studytime < 2:
+    recommendations.append("⏳ **Boost Study Time**: Provide time management support and quiet learning zones.")
+if failures >= 2:
+    recommendations.append("🔁 **Failure Support**: One-on-one mentoring and remedial classes advised.")
+if absences > 10:
+    recommendations.append("🚸 **High Absences**: Consider flexible scheduling or family engagement.")
+if Medu <= 1 or Fedu <= 1:
+    recommendations.append("👨‍👩‍👧 **Low Parental Education**: Encourage family learning and support programs.")
+if traveltime >= 3:
+    recommendations.append("🚍 **Commute Risk**: Recommend online learning alternatives or local centers.")
+if G1 < 10 or G2 < 10:
+    recommendations.append("📉 **Low Early Grades**: Trigger early academic intervention and teacher check-ins.")
+if predicted_G3 < 10:
+    recommendations.append("📛 **AI Warning**: Final grade prediction is low. Prioritize academic recovery plans.")
+
+# ✨ Display Recommendations
+st.markdown("### 🎯 Personalized Recommendations")
+if recommendations:
+    for rec in recommendations:
+        st.success(rec)
+else:
+    st.info("👍 This student profile shows no critical academic risk.")
+
+# 💾 Save option
+if st.button("💾 Save Profile & Recommendations"):
+    log_entry = input_df.copy()
+    log_entry['predicted_G3'] = predicted_G3
+    log_entry['risk_level'] = risk_level
+    log_entry['recommendations'] = ' | '.join(recommendations)
+    log_entry['timestamp'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    try:
+        prev = pd.read_csv("student_recommendation_log.csv")
+        log_df = pd.concat([prev, log_entry], ignore_index=True)
+    except FileNotFoundError:
+        log_df = log_entry
+
+    log_df.to_csv("student_recommendation_log.csv", index=False)
+    st.success("✅ Recommendation saved to student_recommendation_log.csv")
 
 # 📥 Downloadable Recommendation Report
 st.subheader("6. Downloadable Report")
