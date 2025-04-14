@@ -1,14 +1,10 @@
-from transformers import GPT2Tokenizer, GPT2LMHeadModel
-import os
-os.environ["TRANSFORMERS_NO_TF"] = "1"  # Stop TensorFlow-related import errors
 import streamlit as st
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-import pyttsx3
-from transformers import GPT2Tokenizer, GPT2LMHeadModel
-import torch
 import speech_recognition as sr
+import pyttsx3
+import torch
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import BayesianRidge
@@ -73,44 +69,79 @@ readable_df = df.rename(columns={
     "G3": "Final Grade"
 })
 
-st.subheader("📊 1. Dataset Preview (User-Friendly Column Names)")
+# 📊 Enhanced Dataset Preview with Multi-Filters, Charts, Summary & Download
+st.subheader("1. 📋 Dataset Preview with Filters, Charts & Download")
 
-# --- Search/filtering ---
-with st.expander("🔍 Filter or Search Dataset"):
-    filter_column = st.selectbox("Select column to filter", readable_df.columns)
-    filter_value = st.text_input(f"Enter value to search in {filter_column}")
-    if filter_value:
-        filtered_df = readable_df[readable_df[filter_column].astype(str).str.contains(filter_value, case=False)]
-    else:
-        filtered_df = readable_df
+# Rename confusing column names
+column_rename_map = {
+    'Medu': "Mother's Education",
+    'Fedu': "Father's Education",
+    'G1': "Grade Period 1",
+    'G2': "Grade Period 2",
+    'G3': "Final Grade",
+    'traveltime': "Travel Time",
+    'studytime': "Weekly Study Time",
+    'failures': "Past Failures",
+    'absences': "Total Absences",
+    'age': "Student Age",
+    'schoolsup': "School Support",
+    'famsup': "Family Support",
+    'sex': "Gender",
+    'school': "School"
+}
+readable_df = df.rename(columns=column_rename_map)
 
-st.dataframe(filtered_df.head(10))
-st.markdown(f"📌 Shape: {filtered_df.shape[0]} rows × {filtered_df.shape[1]} columns")
+# Fix serialization warning
+readable_df = readable_df.astype({col: 'string' for col in readable_df.select_dtypes('object').columns})
 
-# --- Download button ---
-csv_buffer = io.StringIO()
-filtered_df.to_csv(csv_buffer, index=False)
+# --- Multi-column Filtering ---
+with st.expander("🔍 Apply Filters"):
+    filter_cols = st.multiselect("Select columns to filter", readable_df.columns)
+    filtered_df = readable_df.copy()
+
+    for col in filter_cols:
+        unique_vals = filtered_df[col].dropna().unique()
+        selected_vals = st.multiselect(f"Filter {col}", unique_vals, key=col)
+        if selected_vals:
+            filtered_df = filtered_df[filtered_df[col].isin(selected_vals)]
+
+# Show filtered dataset
+st.dataframe(filtered_df.head(50), use_container_width=True)
+st.markdown(f"📌 Showing {filtered_df.shape[0]} rows × {filtered_df.shape[1]} columns")
+
+# --- Summary & Description ---
+with st.expander("📈 View Data Summary & Description"):
+    st.write("🔢 **Statistical Summary (Numeric Columns)**")
+    st.dataframe(filtered_df.describe())
+
+    st.write("📋 **Column Info (Non-numeric)**")
+    st.dataframe(filtered_df.select_dtypes(include='string').nunique().to_frame(name="Unique Values"))
+
+# --- Charts: Grade & Absences Distribution ---
+if 'Final Grade' in filtered_df.columns:
+    st.subheader("📊 Grade Distribution")
+    fig, ax = plt.subplots()
+    filtered_df['Final Grade'].astype(float).hist(bins=20, color='skyblue', edgecolor='black', ax=ax)
+    ax.set_xlabel("Final Grade (G3)")
+    ax.set_ylabel("Number of Students")
+    st.pyplot(fig)
+
+if 'Total Absences' in filtered_df.columns:
+    st.subheader("📊 Absences Distribution")
+    fig2, ax2 = plt.subplots()
+    filtered_df['Total Absences'].astype(float).hist(bins=20, color='orange', edgecolor='black', ax=ax2)
+    ax2.set_xlabel("Total Absences")
+    ax2.set_ylabel("Number of Students")
+    st.pyplot(fig2)
+
+# --- Download Button ---
+csv = filtered_df.to_csv(index=False).encode("utf-8")
 st.download_button(
-    label="⬇️ Download Filtered Dataset as CSV",
-    data=csv_buffer.getvalue(),
-    file_name='filtered_academic_data.csv',
-    mime='text/csv'
+    label="📥 Download Filtered Dataset as CSV",
+    data=csv,
+    file_name="filtered_student_data.csv",
+    mime="text/csv"
 )
-
-# --- Column Descriptions ---
-with st.expander("ℹ️ Column Descriptions"):
-    st.markdown("""
-    - **Mother's Education / Father's Education**: Level of education (0 = none, 4 = higher education)
-    - **Parent Status**: Whether parents live together or apart
-    - **Travel Time**: Time to reach school (1 = <15 mins, 4 = >1 hour)
-    - **Study Time**: Weekly study time (1 = <2 hrs, 4 = >10 hrs)
-    - **School Support**: Extra academic support from school (yes/no)
-    - **Family Support**: Extra support from family (yes/no)
-    - **Final Grade**: Student’s final academic performance (G3)
-    - **Internet Access**: Whether the student has internet access at home
-    - **Romantic Relationship**: If student is currently in a romantic relationship
-    - **Absences**: Number of days the student was absent
-    """)
 
 # --- Data summary ---
 st.subheader("📈 2. Dataset Summary Statistics")
@@ -128,7 +159,6 @@ st.pyplot(fig)
 st.subheader("🧠 Correlation with Final Grade")
 correlation = filtered_df.corr(numeric_only=True)["Final Grade"].sort_values(ascending=False)
 st.bar_chart(correlation)
-
 
 # 🔎 Data Quality Insights
 st.subheader("2. Data Quality Overview")
@@ -343,7 +373,7 @@ if submitted:
         st.markdown("- [🚀 Research Basics for Students – Google Scholar Guide](https://scholar.google.com/)")
 
 # 🤖 Section 8: Chatbot Assistant
-st.subheader("8. 🗣️ Academic Chatbot Assistant"
+st.subheader("8.Chatbot Assistant")
 user_question = st.text_input("Ask anything about student performance...")
 
 def ai_bot_response(query):
