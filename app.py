@@ -272,40 +272,72 @@ with tabs[6]:
     ax.set_title("Correlation Matrix of Numeric Features")
     st.pyplot(fig)
 
-# 🧠 Model Comparison
-st.subheader("4. Model Accuracy Comparison")
+# 📊 Section 4: Model Accuracy Comparison
+st.header("🧠 4. Model Accuracy & Feature Importance")
+
+with st.expander("📌 What is Model Accuracy (R² Score)?", expanded=False):
+    st.markdown("""
+    **R² Score (Coefficient of Determination)** tells us how well the model's predictions match the actual values.
+    - **R² = 1.0**: Perfect prediction
+    - **R² = 0.0**: No better than guessing the average
+    - The **higher**, the **better** the model performance.
+    """)
+
+# 🎯 Select features & scale data
 features = ['age', 'Medu', 'Fedu', 'traveltime', 'studytime', 'failures', 'absences', 'G1', 'G2']
 X = df[features]
 y = df['G3']
+
 scaler = MinMaxScaler()
 X_scaled = scaler.fit_transform(X)
 X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 
+# 🤖 Define models
 models = {
-    "Random Forest": RandomForestRegressor(),
-    "XGBoost": XGBRegressor(),
+    "Random Forest": RandomForestRegressor(random_state=42),
+    "XGBoost": XGBRegressor(random_state=42),
     "Bayesian Ridge": BayesianRidge()
 }
 scores = {}
 
+# 🔁 Train & evaluate models
 for name, model in models.items():
     model.fit(X_train, y_train)
     preds = model.predict(X_test)
     scores[name] = r2_score(y_test, preds)
 
-st.write("🔍 **R² Scores:**")
-st.json(scores)
-best_model = max(scores, key=scores.get)
-st.success(f"✅ Best Model: {best_model} (R²: {scores[best_model]:.2f})")
+# 🧾 Display scores
+st.markdown("### 🔍 Model R² Scores (Higher is Better)")
+score_df = pd.DataFrame(list(scores.items()), columns=["Model", "R² Score"]).sort_values(by="R² Score", ascending=False)
+st.dataframe(score_df.style.background_gradient(cmap='Greens'))
 
-# 🔍 Feature Importance for Random Forest
+# 📌 Best model
+best_model = score_df.iloc[0]['Model']
+best_score = score_df.iloc[0]['R² Score']
+st.success(f"✅ **Best Performing Model:** {best_model} with R² Score = {best_score:.2f}")
+
+# 🌟 Bar chart of all model scores
+fig, ax = plt.subplots()
+sns.barplot(data=score_df, x='Model', y='R² Score', palette='viridis')
+ax.set_ylim(0, 1)
+ax.set_title("Model Performance Comparison (R² Score)")
+st.pyplot(fig)
+
+# 📊 Feature Importance for Random Forest
 if best_model == "Random Forest":
     st.subheader("📊 Feature Importance (Random Forest)")
     importance_df = pd.DataFrame({
         "Feature": features,
         "Importance": models[best_model].feature_importances_
     }).sort_values(by="Importance", ascending=False)
-    st.bar_chart(importance_df.set_index("Feature"))
+
+    st.dataframe(importance_df.style.background_gradient(cmap='Blues'))
+
+    # 📈 Visual chart
+    fig2, ax2 = plt.subplots()
+    sns.barplot(data=importance_df, x="Importance", y="Feature", palette="Blues_d")
+    ax2.set_title("Feature Importance (Random Forest)")
+    st.pyplot(fig2)
 
 # 📌 AI-Driven Socioeconomic Recommendations
 st.subheader("5. AI-Driven Recommendations for Academic Support")
