@@ -11,6 +11,8 @@ from sklearn.linear_model import BayesianRidge
 from xgboost import XGBRegressor
 from sklearn.metrics import r2_score
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
 
 # 🌐 Page Config
 st.set_page_config(page_title="AI Academic Dashboard", layout="wide")
@@ -345,53 +347,56 @@ if best_model_name == "Random Forest":
 # 📌 5. AI-Driven Socioeconomic Recommendations
 st.subheader("📌 5. AI-Driven Recommendations for Academic Support")
 
-# Ensure you only use numeric columns for correlation
+import pandas as pd
+import numpy as np
+import streamlit as st
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+
+# Assuming df is your DataFrame containing the student data
+# First, we need to scale the numeric columns for clustering
 numeric_columns = df.select_dtypes(include=['float64', 'int64']).columns
+scaler = StandardScaler()
+scaled_data = scaler.fit_transform(df[numeric_columns])
 
-# Calculate correlation only on numeric columns
-corr = df[numeric_columns].corr()
+# Apply KMeans clustering to segment students
+kmeans = KMeans(n_clusters=5, random_state=42)  # You can adjust the number of clusters
+df['Cluster'] = kmeans.fit_predict(scaled_data)
 
-# 🧠 Use feature importance from best model (if applicable)
-important_features = []
-if best_model_name == "Random Forest":
-    # Ensure the model has been trained and feature_importances_ exists
-    if best_model_name in trained_models:
-        feature_imp = trained_models[best_model_name].feature_importances_
-        importance_df = pd.DataFrame({
-            'Feature': features,
-            'Importance': feature_imp
-        }).sort_values(by='Importance', ascending=False)
-        important_features = importance_df.head(5)['Feature'].tolist()
+# Example function to generate tailored recommendations based on the cluster
+def generate_recommendations_for_cluster(cluster_id, df):
+    cluster_data = df[df['Cluster'] == cluster_id]
+    recommendations = []
+    
+    # Example tailored recommendations based on the cluster behavior
+    if cluster_data['failures'].mean() > 2:
+        recommendations.append("🔁 **Past Failures Matter**: Students in this group tend to have more failures. Provide emotional and academic counseling to reduce failure rates.")
+    
+    if cluster_data['studytime'].mean() < 2:
+        recommendations.append("⏳ **Study Time Optimization**: Students in this group are not spending enough study time. Consider offering time management workshops and better study environment options.")
+    
+    if cluster_data['absences'].mean() > 10:
+        recommendations.append("🚸 **Reduce Absenteeism**: High absenteeism has been observed. Encourage collaboration with families and explore flexible school attendance options.")
 
-# 📊 Combine correlations + importance for better reasoning
-recommendations = []
+    # Add more rules based on other features if necessary
+    return recommendations
 
-# 🎯 Better Recommendations Logic
-if 'Medu' in important_features or 'Fedu' in important_features:
-    recommendations.append("👩‍🏫 **Parental Education Impact**: Students with more educated parents often show higher grades. Support parent literacy programs and invite parents for school engagement workshops.")
+# Get recommendations for each cluster
+all_recommendations = {}
+for cluster_id in range(5):  # Assuming we have 5 clusters
+    all_recommendations[cluster_id] = generate_recommendations_for_cluster(cluster_id, df)
 
-if 'failures' in important_features and corr['failures'].get('G3', 0) < -0.3:  # Assuming 'G3' is the final grade column
-    recommendations.append("🔁 **Past Failures Matter**: History of failure strongly impacts future grades. Introduce peer mentoring, targeted academic support, and emotional counseling.")
+# Now provide recommendations based on the student’s cluster
+student_cluster = df.loc[df['student_id'] == some_student_id, 'Cluster'].values[0]  # Get student's cluster ID
+cluster_recommendations = all_recommendations.get(student_cluster, [])
 
-if 'studytime' in important_features and corr['studytime'].get('G3', 0) > 0.2:
-    recommendations.append("⏳ **Study Time Optimization**: Boosting study time improves performance. Offer study planners, time management bootcamps, and quiet zones at school.")
-
-if 'absences' in important_features and corr['absences'].get('G3', 0) < -0.2:
-    recommendations.append("🚸 **Reduce Absenteeism**: Missed classes hurt grades. Collaborate with families, track patterns, and explore hybrid attendance options for frequent absentees.")
-
-if 'traveltime' in important_features and corr['traveltime'].get('G3', 0) < -0.1:
-    recommendations.append("🚍 **Long Commute Risks**: Long travel affects learning. Suggest satellite learning centers, flexible timings, or remote digital classes.")
-
-if 'G1' in important_features or 'G2' in important_features:
-    recommendations.append("📈 **Continuous Monitoring**: Early grades (G1, G2) are key indicators. Start academic interventions and parent-teacher meetings early based on first-term results.")
-
-# 🧭 Output
-if recommendations:
+# Display the recommendations
+if cluster_recommendations:
     st.markdown("### 🎯 Personalized Interventions")
-    for rec in recommendations:
+    for rec in cluster_recommendations:
         st.info(rec)
 else:
-    st.warning("No strong recommendations based on top features. Try exploring more data or engineered features.")
+    st.warning("No strong recommendations based on cluster data.")
 
 # 📥 Downloadable Recommendation Report
 st.subheader("6. Downloadable Report")
