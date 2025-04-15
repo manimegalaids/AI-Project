@@ -457,11 +457,18 @@ if submitted:
     else:
         st.markdown("- [Advanced MOOCs on edX](https://www.edx.org/learn/study-skills)")
 
+# ✅ Ensure recommendations exist in session state
+if 'recommendations' not in st.session_state:
+    st.session_state.recommendations = []
+
 # 📥 Downloadable Recommendation Report
-st.subheader("6. Downloadable Report")
-if st.button("📤 Download AI Recommendations"):
-    rec_text = "\n\n".join(recommendations)
-    st.download_button("📄 Download", rec_text, file_name="ai_recommendations.txt")
+st.subheader("6. 📥 Downloadable Report")
+
+if st.session_state.recommendations:
+    rec_text = "\n\n".join(st.session_state.recommendations)
+    st.download_button("📄 Download AI Recommendations", rec_text, file_name="ai_recommendations.txt")
+else:
+    st.warning("ℹ️ No recommendations available yet. Please run a prediction first.")
 
 # 🎯 Predict Final Grade + Recommend Learning Path
 st.subheader("7. Predict Final Grade & Get Personalized Learning Path")
