@@ -356,58 +356,78 @@ best_model = joblib.load("best_model.pkl")     # ✅ Your trained model
 
 # --- Feature columns used for prediction and clustering ---
 input_features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'traveltime', 'G1', 'G2']
+# 🎯 Predict Final Grade + Recommend Learning Path
+st.subheader("7. Predict Final Grade & Get Personalized Learning Path")
 
-import shap
-import matplotlib.pyplot as plt
+with st.form("combined_prediction_form"):
+    st.markdown("📌 Enter student academic and socio-economic details:")
+    age = st.slider("Age", 15, 22, 17)
+    Medu = st.slider("Mother's Education (0-4)", 0, 4, 2)
+    Fedu = st.slider("Father's Education (0-4)", 0, 4, 2)
+    traveltime = st.slider("Travel Time (1=short <15min - 4=long >1hr)", 1, 4, 1)
+    studytime = st.slider("Weekly Study Time (1=<2hrs - 4=>10hrs)", 1, 4, 2)
+    failures = st.slider("Past Class Failures", 0, 4, 0)
+    absences = st.slider("Total Absences", 0, 100, 5)
+    G1 = st.slider("First Period Grade (G1)", 0, 20, 10)
+    G2 = st.slider("Second Period Grade (G2)", 0, 20, 10)
 
-st.subheader("🎯 AI-Powered Real-Time Academic Recommendation")
+    submitted = st.form_submit_button("🎓 Predict & Recommend")
 
-# Get user input
-user_input = {feat: st.slider(feat, float(df[feat].min()), float(df[feat].max()), float(df[feat].median())) for feat in features}
-input_array = np.array([user_input[feat] for feat in features]).reshape(1, -1)
-scaled_input = scaler.transform(input_array)
+if submitted:
+    input_data = pd.DataFrame([[age, Medu, Fedu, traveltime, studytime, failures, absences, G1, G2]], columns=features)
+    input_scaled = scaler.transform(input_data)
+    G3_pred = models[best_model].predict(input_scaled)[0]
 
-# Predict G3
-prediction = trained_models[best_model_name].predict(scaled_input)[0]
-st.success(f"📘 Predicted Final Grade: **{prediction:.2f}**")
+    st.success(f"🎓 Predicted Final Grade (G3): {G3_pred:.2f}")
 
-# SHAP explanation
-explainer = shap.Explainer(trained_models[best_model_name])
-shap_values = explainer(scaled_input)
+    # 📌 Personalized Academic Recommendations
+    recommendations = []
 
-# Visualize SHAP explanation
-st.markdown("#### 🔍 Model Explanation (Feature Impact on Prediction)")
-fig, ax = plt.subplots()
-shap.plots.waterfall(shap_values[0], max_display=6, show=False)
-st.pyplot(fig)
+    if G3_pred < 10:
+        recommendations.append("🔴 **At-Risk Student**: Personalized tutoring sessions needed with focus on weak concepts from G1 & G2.")
+        if failures > 0:
+            recommendations.append("❌ Prior failures detected. Recommend academic counseling and regular progress tracking.")
+        if studytime <= 2:
+            recommendations.append("⏱️ Study time is low. Suggest time management coaching and digital learning planners.")
+        if absences > 10:
+            recommendations.append("🏫 High absenteeism. Engage with guardians and consider blended/remote learning models.")
 
-# Extract top contributing negative factors
-shap_df = pd.DataFrame({
-    'Feature': features,
-    'SHAP Value': shap_values.values[0]
-}).sort_values(by='SHAP Value')
+    elif G3_pred < 14:
+        recommendations.append("🟡 **Average Performer**: Recommend structured self-paced modules and performance goals.")
+        if studytime <= 2:
+            recommendations.append("📘 Boost study hours using techniques like Pomodoro and spaced repetition.")
+        if absences > 5:
+            recommendations.append("🕒 Reduce missed classes by sending automated alerts and reminders.")
 
-top_negative = shap_df[shap_df['SHAP Value'] < 0].head(3)['Feature'].tolist()
-
-# Generate recommendation using natural language
-recommendation_text = "Based on the model's prediction, the following factors are contributing negatively:\n\n"
-
-for feat in top_negative:
-    if feat in ['Medu', 'Fedu']:
-        recommendation_text += f"📚 **Low {feat}**: Suggest family involvement or parental literacy support programs.\n"
-    elif feat == 'failures':
-        recommendation_text += "❌ **Past Failures**: Recommend intervention and personalized tutoring.\n"
-    elif feat == 'traveltime':
-        recommendation_text += "🚌 **High Travel Time**: Suggest hybrid or nearby learning centers.\n"
-    elif feat in ['G1', 'G2']:
-        recommendation_text += f"📉 **Low {feat} Score**: Indicates need for targeted academic revision.\n"
-    elif feat == 'absences':
-        recommendation_text += "📆 **High Absences**: Engage attendance support strategies.\n"
     else:
-        recommendation_text += f"⚠️ **{feat}**: Requires attention based on model impact.\n"
+        recommendations.append("🟢 **High Performer**: Recommend advanced learning paths or gifted programs.")
+        if studytime > 3:
+            recommendations.append("🚀 Encourage participation in competitions or online MOOCs (Coursera, edX).")
 
-st.markdown("#### 🧠 Personalized Recommendation")
-st.info(recommendation_text)
+    st.markdown("### 🧑‍🏫 Recommended Actions:")
+    for rec in recommendations:
+        st.info(rec)
+
+    # 📚 AI-Powered Learning Resource Recommender
+    st.markdown("### 📚 Tailored Learning Resources")
+
+    if G3_pred < 10:
+        st.markdown("- [🎥 How to Study Effectively – Science-Based Tips (YouTube)](https://youtu.be/p60rN9JEapg)")
+        st.markdown("- [⏱️ Pomodoro Timer Web Tool](https://pomofocus.io/)")
+        st.markdown("- [📘 Time Management Course – Coursera](https://www.coursera.org/learn/work-smarter-not-harder)")
+        st.markdown("- [📗 Khan Academy – Foundational Skills](https://www.khanacademy.org)")
+        st.markdown("- [🧠 Motivation for Students – TEDx Talk](https://youtu.be/O96fE1E-rf8)")
+
+    elif G3_pred < 14:
+        st.markdown("- [🎓 Study Skills for High School & College – YouTube](https://youtu.be/CPxSzxylRCI)")
+        st.markdown("- [📈 Focus & Productivity Guide – Todoist Blog](https://blog.todoist.com/productivity-methods/)")
+        st.markdown("- [📚 Self-Paced Learning: Study Smarter](https://www.opencollege.info/self-paced-learning/)")
+
+    else:
+        st.markdown("- [🏆 Advanced MOOC: edX – Academic Excellence Courses](https://www.edx.org/learn/study-skills)")
+        st.markdown("- [🎖️ Olympiad/Competition Preparation – Learn More](https://artofproblemsolving.com/)")
+        st.markdown("- [🚀 Research Basics for Students – Google Scholar Guide](https://scholar.google.com/)")
+
 
 # 📥 Downloadable Recommendation Report
 st.subheader("6. Downloadable Report")
