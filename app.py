@@ -1,13 +1,14 @@
+# Required Libraries
 import streamlit as st
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import speech_recognition as sr
 import numpy as np
+import io
 import pyttsx3
 import torch
 import datetime
-import joblib
 from fpdf import FPDF
 import base64
 import plotly.express as px
@@ -31,13 +32,7 @@ def load_data():
     df_mat = pd.read_csv("student-mat.csv", sep=';')
     df_por = pd.read_csv("student-por.csv", sep=';')
     return pd.concat([df_mat, df_por], axis=0).drop_duplicates().reset_index(drop=True)
-
 df = load_data()
-
-import io
-
-# Load dataset
-# df = pd.read_csv('your_dataset.csv')  # Uncomment this in your project
 
 # Rename columns to full names for better readability
 readable_df = df.rename(columns={
@@ -151,14 +146,11 @@ st.download_button(
 )
 
 # --- Data summary ---
-st.subheader("📈 2. Dataset Summary Statistics")
+st.subheader("📈 Dataset Summary Statistics")
 st.dataframe(filtered_df.describe(include='all'))
 
 # --- Quick visual summary ---
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-st.subheader("📊 3. Grade Distribution Plot")
+st.subheader("📊 Grade Distribution Plot")
 fig, ax = plt.subplots()
 sns.histplot(filtered_df["Final Grade"], bins=10, kde=True, ax=ax)
 st.pyplot(fig)
@@ -279,10 +271,9 @@ with tabs[6]:
     ax.set_title("Correlation Matrix of Numeric Features")
     st.pyplot(fig)
 
+
 # 4. 📊 Model Accuracy Comparison (R² Score for Final Grade Prediction)
 st.subheader("📊 4. Model Accuracy Comparison")
-
-from sklearn.metrics import r2_score
 
 # 🔁 Function to train and evaluate models
 def train_models(X_train, X_test, y_train, y_test):
@@ -349,8 +340,6 @@ if best_model_name == "Random Forest":
     ax2.set_title("Feature Importance from Random Forest")
     st.pyplot(fig2)
 
-#st.title("🎓 Predict Final Grade & Get Personalized Learning Path")
-
 # Load dataset
 df_mat = pd.read_csv("student-mat.csv", sep=';')
 df_por = pd.read_csv("student-por.csv", sep=';')
@@ -401,6 +390,8 @@ else:
 
 st.sidebar.success(f"✅ Using: {best_model_name}")
 
+st.subheader("📌 5. Smart AI-Powered Academic Recommendations")
+st.markdown("Get actionable, real-time guidance based on socio-academic factors and student-specific predictions.")
 # Form for input
 with st.form("prediction_form"):
     st.markdown("📌 Enter student academic and socio-economic details:")
@@ -462,8 +453,8 @@ if 'recommendations' not in st.session_state:
     st.session_state.recommendations = []
 
 
-# 🤖 Section 8: Chatbot Assistant
-st.subheader("6.Chatbot Assistant")
+# 🤖 Section 6: Chatbot Assistant
+st.subheader("🤖 6. Chatbot Assistant")
 user_question = st.text_input("Ask anything about student performance...")
 
 def ai_bot_response(query):
