@@ -368,104 +368,72 @@ input_features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'travelti
 
 # 📌 Load & Preprocess Dataset
 # -------------------------------
-st.subheader("📌5. AI-Powered Recommendations")
-# 📌 AI-Driven Socioeconomic Recommendations with Optimization
-# --------------------------------------------------------
+import streamlit as st
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
 
-import plotly.express as px
-import plotly.graph_objects as go
+st.subheader("🎯 AI-Powered Student Recommendations (No Manual Input)")
 
-# 🧙‍⬥️ Load and Combine Datasets
-@st.cache_data
-def load_and_prepare_data():
-    mat = pd.read_csv("student-mat.csv", sep=';')
-    por = pd.read_csv("student-por.csv", sep=';')
-    df = pd.concat([mat, por], ignore_index=True)
-    df = df.drop_duplicates()
-    df["StudentIndex"] = df.index  # Unique ID for preview
-    return df
+# Upload CSV
+uploaded_file = st.file_uploader("📂 Upload your student dataset (CSV)", type=["csv"])
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
 
-df = load_and_prepare_data()
+    # Select features relevant to clustering and recommendations
+    features = ['G1', 'G2', 'G3', 'studytime', 'failures', 'absences', 'Medu', 'Fedu', 'traveltime']
+    df = df.dropna(subset=features)  # Drop rows with missing values
+    X = df[features]
 
-# 🔄 Normalize and Cluster Students
-@st.cache_data
-def cluster_students(df, n_clusters=5):
-    features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'traveltime', 'G1', 'G2']
+    # Standardize the features
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(df[features])
-    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+    X_scaled = scaler.fit_transform(X)
+
+    # Perform clustering
+    kmeans = KMeans(n_clusters=4, random_state=42)
     df['Cluster'] = kmeans.fit_predict(X_scaled)
-    return df, scaler, kmeans
 
-df, scaler, kmeans = cluster_students(df)
+    # 🎨 Visualization: Cluster Avg G3
+    cluster_means = df.groupby('Cluster')['G3'].mean().reset_index()
+    st.bar_chart(cluster_means.set_index('Cluster'))
 
-# 🧠 Generate Automated Recommendations per Student
-@st.cache_data
-def generate_recommendations(df):
+    # 📌 Recommendations for each student
+    st.markdown("### 📋 Student-wise Smart Recommendations")
     recommendations = []
-    for _, row in df.iterrows():
-        cluster_df = df[df['Cluster'] == row['Cluster']]
-        profile_avg = cluster_df[['absences', 'failures', 'studytime', 'G1', 'G2', 'G3']].mean()
-        student_recs = []
 
-        if row['absences'] > profile_avg['absences']:
-            student_recs.append("📉 High absences compared to peers. Consider attendance tracking support.")
-        if row['failures'] > profile_avg['failures']:
-            student_recs.append("📚 Past failures indicate need for personalized mentoring.")
-        if row['studytime'] < profile_avg['studytime']:
-            student_recs.append("⏳ Low study time. Recommend study skills workshops or productivity routines.")
+    for idx, row in df.iterrows():
+        cluster_avg = df[df['Cluster'] == row['Cluster']][features].mean()
+        rec = []
+
+        if row['absences'] > cluster_avg['absences']:
+            rec.append("📉 High absences – encourage consistent attendance.")
+        if row['failures'] > cluster_avg['failures']:
+            rec.append("📚 Multiple failures – consider mentoring/tutoring.")
+        if row['studytime'] < cluster_avg['studytime']:
+            rec.append("⏱️ Study time below cluster average – suggest study planning.")
+        if row['G3'] < cluster_avg['G3']:
+            rec.append("📛 Final grade below peer average – early intervention may help.")
         if row['G2'] < row['G1']:
-            student_recs.append("📉 Performance drop from G1 to G2. Encourage progress check-ins.")
-        if row['G3'] < profile_avg['G3']:
-            student_recs.append("📋 Final grade below peer average. Suggest academic intervention plan.")
+            rec.append("📉 Grade drop from G1 to G2 – investigate challenges.")
 
-        recommendations.append({
-            'StudentIndex': row['StudentIndex'],
-            'Cluster': row['Cluster'],
-            'G3': row['G3'],
-            'Recommendations': student_recs
-        })
-    return pd.DataFrame(recommendations)
+        if rec:
+            recommendations.append({
+                'Student Index': idx,
+                'Cluster': int(row['Cluster']),
+                'Predicted G3': row['G3'],
+                'Recommendations': ' | '.join(rec)
+            })
 
-recommendation_df = generate_recommendations(df)
+    # Convert to DataFrame and display
+    rec_df = pd.DataFrame(recommendations)
+    st.dataframe(rec_df)
 
-# 🎛️ Filter by Cluster or G3
-st.sidebar.title("🔍 Filter Students")
-clusters = st.sidebar.multiselect("Select Clusters", options=df['Cluster'].unique(), default=list(df['Cluster'].unique()))
-g3_range = st.sidebar.slider("Select G3 Range", 0, 20, (0, 20))
-
-filtered = df[(df['Cluster'].isin(clusters)) & (df['G3'].between(g3_range[0], g3_range[1]))]
-filtered_recs = recommendation_df[recommendation_df['StudentIndex'].isin(filtered['StudentIndex'])]
-
-# 📊 Cluster-Level Average G3
-st.subheader("📊 Average Final Grade by Cluster")
-avg_g3_chart = df.groupby('Cluster')['G3'].mean().reset_index()
-st.plotly_chart(px.bar(avg_g3_chart, x='Cluster', y='G3', title="Average G3 by Cluster"), use_container_width=True)
-
-# 🔍 Preview One Student at a Time
-st.subheader("🎓 Preview AI Recommendations per Student")
-selected_id = st.selectbox("Select Student ID", filtered['StudentIndex'].tolist())
-selected_row = df[df['StudentIndex'] == selected_id].iloc[0]
-selected_rec = filtered_recs[filtered_recs['StudentIndex'] == selected_id].iloc[0]
-
-# 📈 Line Chart of G1 → G3
-line_chart = go.Figure()
-line_chart.add_trace(go.Scatter(x=["G1", "G2", "G3"], y=[selected_row['G1'], selected_row['G2'], selected_row['G3']],
-                                mode='lines+markers', line=dict(color='royalblue'), name="Grade Progress"))
-line_chart.update_layout(title="📈 Academic Progress", yaxis_title="Grade", xaxis_title="Term")
-st.plotly_chart(line_chart, use_container_width=True)
-
-# 🎯 Show Personalized Recommendations
-st.markdown(f"### 🧠 Recommendations for Student {selected_id} (Cluster {selected_rec['Cluster']})")
-for r in selected_rec['Recommendations']:
-    st.success(r)
-
-# 📎 Export Option
-if st.button("📎 Save Current Student Recommendation"):
-    export_data = pd.DataFrame([selected_rec])
-    export_data.to_csv("student_recommendation_log.csv", mode='a', index=False, header=False)
-    st.success("✅ Recommendation saved.")
-
+    # Optional: Downloadable version
+    if not rec_df.empty:
+        csv = rec_df.to_csv(index=False).encode('utf-8')
+        st.download_button("⬇️ Download Recommendations", csv, "student_recommendations.csv", "text/csv")
+else:
+    st.info("Upload a student dataset to generate recommendations.")
 
 # 📥 Downloadable Recommendation Report
 st.subheader("6. Downloadable Report")
