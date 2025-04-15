@@ -357,56 +357,57 @@ best_model = joblib.load("best_model.pkl")     # ✅ Your trained model
 # --- Feature columns used for prediction and clustering ---
 input_features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'traveltime', 'G1', 'G2']
 
-# 🧠 Intelligent Academic Support Generator Based on Feature Impact
-st.subheader("🎯5.  Personalized AI Recommendations Based on Your Data")
+import shap
+import matplotlib.pyplot as plt
 
-# 📌 Use the best model's feature importance
-feature_imp = trained_models[best_model_name].feature_importances_
-importance_df = pd.DataFrame({'Feature': features, 'Importance': feature_imp})
-top_features = importance_df.sort_values(by="Importance", ascending=False)['Feature'].tolist()
+st.subheader("🎯 AI-Powered Real-Time Academic Recommendation")
 
-# ✏️ Input current student record to analyze
-st.markdown("#### 👤 Enter Student Information to Generate Smart Recommendations")
-
-user_input = {}
-for feat in features:
-    min_val = float(df[feat].min())
-    max_val = float(df[feat].max())
-    default = float(df[feat].median())
-    user_input[feat] = st.slider(f"{feat}", min_val, max_val, default)
-
-# 🔍 Analyze critical weaknesses based on feature thresholds
-recommendations = []
-
-if user_input['Medu'] <= 1 or user_input['Fedu'] <= 1:
-    recommendations.append("🧑‍🏫 **Parental Education** is low — Encourage parent involvement programs, literacy outreach, and mentorship.")
-
-if user_input['failures'] > 0:
-    recommendations.append("❌ **Past Failures** — Suggest early intervention, targeted tutoring, and mentor check-ins.")
-
-if user_input['traveltime'] >= 3:
-    recommendations.append("🚌 **Long Travel Time** — Recommend hybrid/online learning access or local learning centers.")
-
-if user_input['G1'] < 10 or user_input['G2'] < 10:
-    recommendations.append("📉 **Low G1 or G2 Scores** — Provide remedial support, frequent feedback, and study plan customization.")
-
-if user_input['absences'] > df['absences'].mean():
-    recommendations.append("📆 **High Absences** — Recommend attendance incentives and student support follow-ups.")
-
-# 🧾 Show dynamic recommendations
-if recommendations:
-    st.markdown("### 🎓 AI-Powered Targeted Recommendations")
-    for rec in recommendations:
-        st.info(rec)
-else:
-    st.success("✅ No major academic risks detected. Maintain current strategies and track performance!")
-
-# 🧠 Predict final grade with the best model
+# Get user input
+user_input = {feat: st.slider(feat, float(df[feat].min()), float(df[feat].max()), float(df[feat].median())) for feat in features}
 input_array = np.array([user_input[feat] for feat in features]).reshape(1, -1)
 scaled_input = scaler.transform(input_array)
-predicted_grade = trained_models[best_model_name].predict(scaled_input)[0]
-st.markdown(f"### 📘 Predicted Final Grade (G3): **{predicted_grade:.2f}**")
 
+# Predict G3
+prediction = trained_models[best_model_name].predict(scaled_input)[0]
+st.success(f"📘 Predicted Final Grade: **{prediction:.2f}**")
+
+# SHAP explanation
+explainer = shap.Explainer(trained_models[best_model_name])
+shap_values = explainer(scaled_input)
+
+# Visualize SHAP explanation
+st.markdown("#### 🔍 Model Explanation (Feature Impact on Prediction)")
+fig, ax = plt.subplots()
+shap.plots.waterfall(shap_values[0], max_display=6, show=False)
+st.pyplot(fig)
+
+# Extract top contributing negative factors
+shap_df = pd.DataFrame({
+    'Feature': features,
+    'SHAP Value': shap_values.values[0]
+}).sort_values(by='SHAP Value')
+
+top_negative = shap_df[shap_df['SHAP Value'] < 0].head(3)['Feature'].tolist()
+
+# Generate recommendation using natural language
+recommendation_text = "Based on the model's prediction, the following factors are contributing negatively:\n\n"
+
+for feat in top_negative:
+    if feat in ['Medu', 'Fedu']:
+        recommendation_text += f"📚 **Low {feat}**: Suggest family involvement or parental literacy support programs.\n"
+    elif feat == 'failures':
+        recommendation_text += "❌ **Past Failures**: Recommend intervention and personalized tutoring.\n"
+    elif feat == 'traveltime':
+        recommendation_text += "🚌 **High Travel Time**: Suggest hybrid or nearby learning centers.\n"
+    elif feat in ['G1', 'G2']:
+        recommendation_text += f"📉 **Low {feat} Score**: Indicates need for targeted academic revision.\n"
+    elif feat == 'absences':
+        recommendation_text += "📆 **High Absences**: Engage attendance support strategies.\n"
+    else:
+        recommendation_text += f"⚠️ **{feat}**: Requires attention based on model impact.\n"
+
+st.markdown("#### 🧠 Personalized Recommendation")
+st.info(recommendation_text)
 
 # 📥 Downloadable Recommendation Report
 st.subheader("6. Downloadable Report")
