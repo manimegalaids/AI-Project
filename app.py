@@ -274,39 +274,12 @@ with tabs[6]:
     ax.set_title("Correlation Matrix of Numeric Features")
     st.pyplot(fig)
 
-# 📦 Imports
-import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import joblib
-import os
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import BayesianRidge
-from xgboost import XGBRegressor
-from sklearn.preprocessing import MinMaxScaler
+# 4. 📊 Model Accuracy Comparison (R² Score for Final Grade Prediction)
+st.subheader("📊 4. Model Accuracy Comparison")
+
 from sklearn.metrics import r2_score
 
-# 🧠 Title
-st.subheader("📊 4. Model Accuracy Comparison (R² Score for Final Grade Prediction)")
-
-# 📥 Load and prepare data
-df_mat = pd.read_csv("student-mat.csv", sep=';')
-df_por = pd.read_csv("student-por.csv", sep=';')
-df = pd.concat([df_mat, df_por]).drop_duplicates().reset_index(drop=True)
-
-features = ['age', 'Medu', 'Fedu', 'traveltime', 'studytime', 'failures', 'absences', 'G1', 'G2']
-target = 'G3'
-
-X = df[features]
-y = df[target]
-
-scaler = MinMaxScaler()
-X_scaled = scaler.fit_transform(X)
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
-
-# 🔁 Train models
+# 🔁 Function to train and evaluate models
 def train_models(X_train, X_test, y_train, y_test):
     models = {
         "Random Forest": RandomForestRegressor(random_state=42),
@@ -323,25 +296,23 @@ def train_models(X_train, X_test, y_train, y_test):
         trained_models[name] = model
     return scores, trained_models
 
-# ✅ Check for model cache
-if os.path.exists("best_model.pkl"):
-    st.info("🧠 Loading previously saved model...")
-    best_model = joblib.load("best_model.pkl")
-    scores, trained_models = train_models(X_train, X_test, y_train, y_test)
-    best_model_name = max(scores, key=scores.get)
-    best_score = scores[best_model_name]
-else:
-    # 🚀 Train & Evaluate
-    scores, trained_models = train_models(X_train, X_test, y_train, y_test)
-    best_model_name = max(scores, key=scores.get)
-    best_score = scores[best_model_name]
-    
-    # 💾 Save best model
-    joblib.dump(trained_models[best_model_name], "best_model.pkl")
-    best_model = trained_models[best_model_name]
-    st.success("✅ Best model saved as 'best_model.pkl'")
+# ⚙️ Prepare Data
+features = ['age', 'Medu', 'Fedu', 'traveltime', 'studytime', 'failures', 'absences', 'G1', 'G2']
+X = df[features]
+y = df['G3']
 
-# 📈 Visual: R² Scores
+scaler = MinMaxScaler()
+X_scaled = scaler.fit_transform(X)
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+
+# 📈 Train and get scores
+scores, trained_models = train_models(X_train, X_test, y_train, y_test)
+
+# 🔍 Best model detection
+best_model_name = max(scores, key=scores.get)
+best_score = scores[best_model_name]
+
+# 📊 Plot Horizontal Bar Chart
 fig, ax = plt.subplots(figsize=(8, 4))
 colors = ['green' if m == best_model_name else 'skyblue' for m in scores.keys()]
 bars = ax.barh(list(scores.keys()), list(scores.values()), color=colors)
@@ -353,15 +324,16 @@ for bar in bars:
 ax.set_xlim(0, 1)
 ax.set_xlabel("R² Score")
 ax.set_title("🔍 Model Comparison: R² Score for Predicting Final Grade (G3)")
+
 st.pyplot(fig)
 
-# 🎯 Best Model
+# ✅ Best model output
 st.success(f"🏆 Best Model: **{best_model_name}** with R² Score of **{best_score:.2f}**")
 
-# 📌 Feature Importance (if applicable)
+# 📌 Optional: Feature importance if applicable
 if best_model_name == "Random Forest":
-    st.markdown("### 🔍 Feature Importance from Random Forest")
-    feature_imp = best_model.feature_importances_
+    st.markdown("### 📌 Top Contributing Features (Random Forest)")
+    feature_imp = trained_models[best_model_name].feature_importances_
     importance_df = pd.DataFrame({
         'Feature': features,
         'Importance': feature_imp
@@ -372,58 +344,99 @@ if best_model_name == "Random Forest":
     ax2.set_title("Feature Importance from Random Forest")
     st.pyplot(fig2)
 
+# --- Load your dataset and model ---
+df_mat = pd.read_csv("student-mat.csv", sep=';')
+df_por = pd.read_csv("student-por.csv", sep=';') # ✅ Use your cleaned dataset
+best_model = joblib.load("best_model.pkl")     # ✅ Your trained model
+
+# --- Feature columns used for prediction and clustering ---
+input_features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'traveltime', 'G1', 'G2']
+
+# --- Load your dataset and model ---
+df_mat = pd.read_csv("student-mat.csv", sep=';')
+df_por = pd.read_csv("student-por.csv", sep=';')
+best_model = joblib.load("best_model.pkl")     # ✅ Your trained model
+
+# --- Feature columns used for prediction and clustering ---
+input_features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'traveltime', 'G1', 'G2']
+
 from fpdf import FPDF
 import base64
 
-# 🧠 Intelligent Academic Support Generator Based on Feature Impact
-st.subheader("🎯 Personalized AI Recommendations Based on Your Data")
+import pandas as pd
+import streamlit as st
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
 
-# 📌 Use the best model's feature importance
-feature_imp = trained_models[best_model_name].feature_importances_
-importance_df = pd.DataFrame({'Feature': features, 'Importance': feature_imp})
-top_features = importance_df.sort_values(by="Importance", ascending=False)['Feature'].tolist()
+st.set_page_config(layout="wide")
+st.subheader("📌 AI-Powered Recommendations Without User Input")
 
-# ✏️ Input current student record to analyze
-st.markdown("#### 👤 Enter Student Information to Generate Smart Recommendations")
+# Load and merge data
+mat_df = pd.read_csv("student-mat.csv")
+por_df = pd.read_csv("student-por.csv")
 
-user_input = {}
-for feat in features:
-    min_val = float(df[feat].min())
-    max_val = float(df[feat].max())
-    default = float(df[feat].median())
-    user_input[feat] = st.slider(f"{feat}", min_val, max_val, default)
+merge_cols = [
+    'school', 'sex', 'age', 'address', 'famsize', 'Pstatus',
+    'Medu', 'Fedu', 'Mjob', 'Fjob', 'reason', 'nursery', 'internet'
+]
 
-# 🔍 Analyze critical weaknesses based on feature thresholds
-recommendations = []
+merged_df = pd.merge(mat_df, por_df, on=merge_cols, suffixes=('_mat', '_por'))
 
-if user_input['Medu'] <= 1 or user_input['Fedu'] <= 1:
-    recommendations.append("🧑‍🏫 **Parental Education** is low — Encourage parent involvement programs, literacy outreach, and mentorship.")
+# Create unified features
+merged_df['G1'] = merged_df[['G1_mat', 'G1_por']].mean(axis=1).round()
+merged_df['G2'] = merged_df[['G2_mat', 'G2_por']].mean(axis=1).round()
+merged_df['G3'] = merged_df[['G3_mat', 'G3_por']].mean(axis=1).round()
+merged_df['studytime'] = merged_df[['studytime_mat', 'studytime_por']].mean(axis=1).round()
+merged_df['failures'] = merged_df[['failures_mat', 'failures_por']].mean(axis=1).round()
+merged_df['absences'] = merged_df[['absences_mat', 'absences_por']].mean(axis=1).round()
+merged_df['traveltime'] = merged_df[['traveltime_mat', 'traveltime_por']].mean(axis=1).round()
 
-if user_input['failures'] > 0:
-    recommendations.append("❌ **Past Failures** — Suggest early intervention, targeted tutoring, and mentor check-ins.")
+# Features for modeling
+features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'traveltime', 'G1', 'G2', 'G3']
+df = merged_df[features].dropna()
 
-if user_input['traveltime'] >= 3:
-    recommendations.append("🚌 **Long Travel Time** — Recommend hybrid/online learning access or local learning centers.")
+# Standardize and cluster
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(df.drop(columns='G3'))
+kmeans = KMeans(n_clusters=5, random_state=42)
+df['Cluster'] = kmeans.fit_predict(X_scaled)
 
-if user_input['G1'] < 10 or user_input['G2'] < 10:
-    recommendations.append("📉 **Low G1 or G2 Scores** — Provide remedial support, frequent feedback, and study plan customization.")
+# Generate recommendations for each student
+all_recommendations = []
+for index, row in df.iterrows():
+    cluster_df = df[df['Cluster'] == row['Cluster']]
+    cluster_mean = cluster_df.mean()
 
-if user_input['absences'] > df['absences'].mean():
-    recommendations.append("📆 **High Absences** — Recommend attendance incentives and student support follow-ups.")
+    student_rec = []
+    if row['absences'] > cluster_mean['absences']:
+        student_rec.append("📉 Reduce absences to align with peers.")
+    if row['failures'] > cluster_mean['failures']:
+        student_rec.append("📚 Attend mentoring or remedial sessions.")
+    if row['studytime'] < cluster_mean['studytime']:
+        student_rec.append("⏱️ Increase study hours for improved outcomes.")
+    if row['G2'] < row['G1']:
+        student_rec.append("📉 G2 is lower than G1. Possible performance drop.")
+    if row['G3'] < cluster_mean['G3']:
+        student_rec.append("📛 Final grade is below cluster average. Needs attention.")
+    if row['Medu'] < cluster_mean['Medu'] or row['Fedu'] < cluster_mean['Fedu']:
+        student_rec.append("👨‍👩‍👧 Support needed for lower parental education background.")
 
-# 🧾 Show dynamic recommendations
-if recommendations:
-    st.markdown("### 🎓 AI-Powered Targeted Recommendations")
-    for rec in recommendations:
-        st.info(rec)
-else:
-    st.success("✅ No major academic risks detected. Maintain current strategies and track performance!")
+    all_recommendations.append({
+        'Index': index,
+        'G3': row['G3'],
+        'Recommendations': student_rec
+    })
 
-# 🧠 Predict final grade with the best model
-input_array = np.array([user_input[feat] for feat in features]).reshape(1, -1)
-scaled_input = scaler.transform(input_array)
-predicted_grade = trained_models[best_model_name].predict(scaled_input)[0]
-st.markdown(f"### 📘 Predicted Final Grade (G3): **{predicted_grade:.2f}**")
+# Display top 10 students and their AI recommendations
+st.markdown("### 🎯 Top AI-Driven Recommendations (Sample of 10 Students):")
+for rec in all_recommendations[:10]:  # Show only first 10 students
+    st.markdown(f"#### 👤 Student {rec['Index']} - Final Grade (G3): **{rec['G3']}**")
+    if rec['Recommendations']:
+        for r in rec['Recommendations']:
+            st.success(r)
+    else:
+        st.info("👍 No immediate concerns detected.")
+    st.markdown("---")
 
 
 # 📥 Downloadable Recommendation Report
