@@ -3,6 +3,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import speech_recognition as sr
+import numpy as np
 import pyttsx3
 import torch
 import datetime
