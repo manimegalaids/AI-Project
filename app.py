@@ -350,28 +350,12 @@ if best_model_name == "Random Forest":
 
 # --- Load your dataset and model ---
 df_mat = pd.read_csv("student-mat.csv", sep=';')
-df_por = pd.read_csv("student-por.csv", sep=';') # ✅ Use your cleaned dataset
-best_model = joblib.load("best_model.pkl")     # ✅ Your trained model
-
-# --- Feature columns used for prediction and clustering ---
-input_features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'traveltime', 'G1', 'G2']
-
-# --- Load your dataset and model ---
-df_mat = pd.read_csv("student-mat.csv", sep=';')
 df_por = pd.read_csv("student-por.csv", sep=';')
 best_model = joblib.load("best_model.pkl")     # ✅ Your trained model
 
 # --- Feature columns used for prediction and clustering ---
 input_features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'traveltime', 'G1', 'G2']
 
-
-
-# 📌 Load & Preprocess Dataset
-# -------------------------------
-import streamlit as st
-import pandas as pd
-from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans
 
 # 📌 AI-Driven Socioeconomic Recommendations
 st.subheader("4. AI-Driven Recommendations for Academic Support")
