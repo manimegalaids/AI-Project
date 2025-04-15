@@ -363,11 +363,6 @@ input_features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'travelti
 from fpdf import FPDF
 import base64
 
-import pandas as pd
-import streamlit as st
-from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans
-
 st.set_page_config(layout="wide")
 st.subheader("📌 AI-Powered Recommendations Without User Input")
 
