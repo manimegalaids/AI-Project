@@ -346,7 +346,7 @@ if best_model_name == "Random Forest":
 
 # --- Load your dataset and model ---
 df_mat = pd.read_csv("student-mat.csv", sep=';')
-df_por = pd.read_csv("student-por.csv", sep=';')
+df_por = pd.read_csv("student-por.csv", sep=';') # ✅ Use your cleaned dataset
 best_model = joblib.load("best_model.pkl")     # ✅ Your trained model
 
 # --- Feature columns used for prediction and clustering ---
@@ -360,85 +360,75 @@ best_model = joblib.load("best_model.pkl")     # ✅ Your trained model
 # --- Feature columns used for prediction and clustering ---
 input_features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'traveltime', 'G1', 'G2']
 
-# --- Select student data by row index ---
-st.subheader("📌 5. Smart AI Recommendations for Student Support")
-st.markdown("#### Select a student from dataset")
+from fpdf import FPDF
+import base64
 
-selected_index = st.selectbox("Choose a student record", df.index)
-student_data = df.loc[[selected_index]]
+# ----------------------------
+# 📌 AI-Driven Socioeconomic Recommendations
+# ----------------------------
+st.subheader("5. 📌 AI-Driven Recommendations for Academic Support")
 
-# --- Predict final grade ---
-predicted_G3 = best_model.predict(student_data[input_features])[0]
-
-# --- Risk Meter ---
-if predicted_G3 >= 15:
-    risk_label = "🟢 Low Risk"
-    color = "green"
-elif predicted_G3 >= 10:
-    risk_label = "🟡 Medium Risk"
-    color = "orange"
-else:
-    risk_label = "🔴 High Risk"
-    color = "red"
-
-st.markdown(f"### 🧠 Predicted Final Grade (G3): **{predicted_G3:.2f}**")
-st.markdown(f"### 📊 Risk Level: <span style='color:{color}; font-size:22px'>{risk_label}</span>", unsafe_allow_html=True)
-
-# --- Dynamic Clustering ---
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(df[input_features])
-
-kmeans = KMeans(n_clusters=5, random_state=42)
-df['Cluster'] = kmeans.fit_predict(X_scaled)
-
-# --- Predict cluster for selected student ---
-input_scaled = scaler.transform(student_data[input_features])
-student_cluster = kmeans.predict(input_scaled)[0]
-cluster_profile = df[df['Cluster'] == student_cluster][input_features].mean()
-
-# --- Dynamic Recommendation Logic ---
+# ✅ Calculate correlations
+corr = df.select_dtypes(include=['int64', 'float64']).corr()['G3'].drop('G3')
 recommendations = []
 
-if student_data['absences'].values[0] > cluster_profile['absences']:
-    recommendations.append("📉 You have more absences than peers. Try to improve attendance consistency.")
+# 🌐 General Dataset-Level Recommendations (Correlation)
+if corr.get('Medu', 0) > 0.2 or corr.get('Fedu', 0) > 0.2:
+    recommendations.append("📚 **Parental Education**: Encourage adult learning and family engagement programs to support students with less educated parents.")
 
-if student_data['failures'].values[0] > cluster_profile['failures']:
-    recommendations.append("📚 You're at a higher risk of failure than similar students. Seek mentoring support.")
+if corr.get('failures', 0) < -0.3:
+    recommendations.append("⏱️ **Past Failures**: Set up early intervention systems and mentorship to assist students with past failures.")
 
-if student_data['studytime'].values[0] < cluster_profile['studytime']:
-    recommendations.append("⏳ Increase study time to match top-performing peers in your cluster.")
+if corr.get('studytime', 0) > 0.2:
+    recommendations.append("📖 **Study Time**: Promote structured study hours and self-paced productivity tools like Pomodoro or spaced repetition.")
 
-if predicted_G3 < cluster_profile[['G1', 'G2']].mean():
-    recommendations.append("📛 Your projected grade is below peer average. Early intervention recommended.")
+if corr.get('absences', 0) < -0.2:
+    recommendations.append("🏫 **Absenteeism**: Offer attendance incentives and integrate attendance alerts to reduce absenteeism.")
 
-if student_data['G2'].values[0] - student_data['G1'].values[0] < 0:
-    recommendations.append("📉 Your progress is declining. Review subjects with the lowest performance.")
+if corr.get('traveltime', 0) < -0.1:
+    recommendations.append("🚌 **Travel Time**: Introduce hybrid learning and nearby community centers to reduce travel burden.")
 
-# --- Show Recommendations ---
-st.markdown("### 🎯 Personalized AI Recommendations")
+# 🎯 Optional Real-Time Prediction Context (G1/G2 Trigger)
+if 'G1' in df.columns and 'G2' in df.columns:
+    low_g1g2 = df[(df['G1'] < 10) & (df['G2'] < 10)]
+    if not low_g1g2.empty:
+        recommendations.append("🚨 **Low G1 & G2 Scores**: Recommend immediate tutoring, parent meetings, and customized learning schedules.")
+
+# 🔎 Show Recommendations
 if recommendations:
+    st.markdown("### 🎯 Targeted Academic Support Suggestions:")
     for rec in recommendations:
-        st.success(rec)
+        st.info(rec)
 else:
-    st.info("👍 You're on track compared to similar students!")
+    st.warning("⚠️ No strong correlations or G1/G2 patterns found for automated suggestions.")
 
-# --- Save Output to CSV ---
-if st.button("💾 Save Student Insights"):
-    entry = student_data.copy()
-    entry['predicted_G3'] = predicted_G3
-    entry['risk_level'] = risk_label
-    entry['cluster'] = student_cluster
-    entry['recommendations'] = ' | '.join(recommendations)
-    entry['timestamp'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+# ----------------------------
+# 📁 Export Recommendations to PDF
+# ----------------------------
+def generate_pdf(recommendations):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt="AI-Powered Academic Support Report", ln=True, align='C')
+    pdf.ln(10)
 
-    try:
-        old = pd.read_csv("dynamic_recommendation_log.csv")
-        new_log = pd.concat([old, entry], ignore_index=True)
-    except:
-        new_log = entry
+    for rec in recommendations:
+        pdf.multi_cell(0, 10, rec)
 
-    new_log.to_csv("dynamic_recommendation_log.csv", index=False)
-    st.success("✅ Data saved to dynamic_recommendation_log.csv")
+    pdf_file = "ai_academic_recommendations.pdf"
+    pdf.output(pdf_file)
+    return pdf_file
+
+if st.button("📤 Export Recommendations as PDF"):
+    if recommendations:
+        pdf_path = generate_pdf(recommendations)
+        with open(pdf_path, "rb") as f:
+            base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+            href = f'<a href="data:application/pdf;base64,{base64_pdf}" download="ai_academic_recommendations.pdf">📄 Click to Download PDF Report</a>'
+            st.markdown(href, unsafe_allow_html=True)
+    else:
+        st.warning("⚠️ No recommendations available to export.")
+
 # 📥 Downloadable Recommendation Report
 st.subheader("6. Downloadable Report")
 if st.button("📤 Download AI Recommendations"):
