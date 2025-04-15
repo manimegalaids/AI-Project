@@ -375,71 +375,56 @@ if best_model_name == "Random Forest":
 from fpdf import FPDF
 import base64
 
-# ----------------------------
-# 📌 AI-Driven Socioeconomic Recommendations
-# ----------------------------
-st.subheader("5. 📌 AI-Driven Recommendations for Academic Support")
+# 🧠 Intelligent Academic Support Generator Based on Feature Impact
+st.subheader("🎯 Personalized AI Recommendations Based on Your Data")
 
-# ✅ Calculate correlations
-corr = df.select_dtypes(include=['int64', 'float64']).corr()['G3'].drop('G3')
+# 📌 Use the best model's feature importance
+feature_imp = trained_models[best_model_name].feature_importances_
+importance_df = pd.DataFrame({'Feature': features, 'Importance': feature_imp})
+top_features = importance_df.sort_values(by="Importance", ascending=False)['Feature'].tolist()
+
+# ✏️ Input current student record to analyze
+st.markdown("#### 👤 Enter Student Information to Generate Smart Recommendations")
+
+user_input = {}
+for feat in features:
+    min_val = float(df[feat].min())
+    max_val = float(df[feat].max())
+    default = float(df[feat].median())
+    user_input[feat] = st.slider(f"{feat}", min_val, max_val, default)
+
+# 🔍 Analyze critical weaknesses based on feature thresholds
 recommendations = []
 
-# 🌐 General Dataset-Level Recommendations (Correlation)
-if corr.get('Medu', 0) > 0.2 or corr.get('Fedu', 0) > 0.2:
-    recommendations.append("📚 **Parental Education**: Encourage adult learning and family engagement programs to support students with less educated parents.")
+if user_input['Medu'] <= 1 or user_input['Fedu'] <= 1:
+    recommendations.append("🧑‍🏫 **Parental Education** is low — Encourage parent involvement programs, literacy outreach, and mentorship.")
 
-if corr.get('failures', 0) < -0.3:
-    recommendations.append("⏱️ **Past Failures**: Set up early intervention systems and mentorship to assist students with past failures.")
+if user_input['failures'] > 0:
+    recommendations.append("❌ **Past Failures** — Suggest early intervention, targeted tutoring, and mentor check-ins.")
 
-if corr.get('studytime', 0) > 0.2:
-    recommendations.append("📖 **Study Time**: Promote structured study hours and self-paced productivity tools like Pomodoro or spaced repetition.")
+if user_input['traveltime'] >= 3:
+    recommendations.append("🚌 **Long Travel Time** — Recommend hybrid/online learning access or local learning centers.")
 
-if corr.get('absences', 0) < -0.2:
-    recommendations.append("🏫 **Absenteeism**: Offer attendance incentives and integrate attendance alerts to reduce absenteeism.")
+if user_input['G1'] < 10 or user_input['G2'] < 10:
+    recommendations.append("📉 **Low G1 or G2 Scores** — Provide remedial support, frequent feedback, and study plan customization.")
 
-if corr.get('traveltime', 0) < -0.1:
-    recommendations.append("🚌 **Travel Time**: Introduce hybrid learning and nearby community centers to reduce travel burden.")
+if user_input['absences'] > df['absences'].mean():
+    recommendations.append("📆 **High Absences** — Recommend attendance incentives and student support follow-ups.")
 
-# 🎯 Optional Real-Time Prediction Context (G1/G2 Trigger)
-if 'G1' in df.columns and 'G2' in df.columns:
-    low_g1g2 = df[(df['G1'] < 10) & (df['G2'] < 10)]
-    if not low_g1g2.empty:
-        recommendations.append("🚨 **Low G1 & G2 Scores**: Recommend immediate tutoring, parent meetings, and customized learning schedules.")
-
-# 🔎 Show Recommendations
+# 🧾 Show dynamic recommendations
 if recommendations:
-    st.markdown("### 🎯 Targeted Academic Support Suggestions:")
+    st.markdown("### 🎓 AI-Powered Targeted Recommendations")
     for rec in recommendations:
         st.info(rec)
 else:
-    st.warning("⚠️ No strong correlations or G1/G2 patterns found for automated suggestions.")
+    st.success("✅ No major academic risks detected. Maintain current strategies and track performance!")
 
-# ----------------------------
-# 📁 Export Recommendations to PDF
-# ----------------------------
-def generate_pdf(recommendations):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt="AI-Powered Academic Support Report", ln=True, align='C')
-    pdf.ln(10)
+# 🧠 Predict final grade with the best model
+input_array = np.array([user_input[feat] for feat in features]).reshape(1, -1)
+scaled_input = scaler.transform(input_array)
+predicted_grade = trained_models[best_model_name].predict(scaled_input)[0]
+st.markdown(f"### 📘 Predicted Final Grade (G3): **{predicted_grade:.2f}**")
 
-    for rec in recommendations:
-        pdf.multi_cell(0, 10, rec)
-
-    pdf_file = "ai_academic_recommendations.pdf"
-    pdf.output(pdf_file)
-    return pdf_file
-
-if st.button("📤 Export Recommendations as PDF"):
-    if recommendations:
-        pdf_path = generate_pdf(recommendations)
-        with open(pdf_path, "rb") as f:
-            base64_pdf = base64.b64encode(f.read()).decode('utf-8')
-            href = f'<a href="data:application/pdf;base64,{base64_pdf}" download="ai_academic_recommendations.pdf">📄 Click to Download PDF Report</a>'
-            st.markdown(href, unsafe_allow_html=True)
-    else:
-        st.warning("⚠️ No recommendations available to export.")
 
 # 📥 Downloadable Recommendation Report
 st.subheader("6. Downloadable Report")
