@@ -349,17 +349,60 @@ if best_model_name == "Random Forest":
     ax2.set_title("Feature Importance from Random Forest")
     st.pyplot(fig2)
 
-# --- Load your dataset and model ---
+#st.title("🎓 Predict Final Grade & Get Personalized Learning Path")
+
+# Load dataset
 df_mat = pd.read_csv("student-mat.csv", sep=';')
 df_por = pd.read_csv("student-por.csv", sep=';')
-best_model = joblib.load("best_model.pkl")     # ✅ Your trained model
+df = pd.concat([df_mat, df_por], axis=0).drop_duplicates().reset_index(drop=True)
 
-# --- Feature columns used for prediction and clustering ---
-input_features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'traveltime', 'G1', 'G2']
-# 🎯 Predict Final Grade + Recommend Learning Path
-st.subheader("5. Predict Final Grade & Get Personalized Learning Path")
+# Feature selection
+features = ['age', 'Medu', 'Fedu', 'traveltime', 'studytime', 'failures', 'absences', 'G1', 'G2']
+target = 'G3'
+X = df[features]
+y = df[target]
 
-with st.form("combined_prediction_form"):
+# Normalize features
+scaler = MinMaxScaler()
+X_scaled = scaler.fit_transform(X)
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+
+# Train models
+rf_model = RandomForestRegressor(random_state=42)
+xgb_model = XGBRegressor(random_state=42)
+br_model = BayesianRidge()
+
+rf_model.fit(X_train, y_train)
+xgb_model.fit(X_train, y_train)
+br_model.fit(X_train, y_train)
+
+# Evaluate
+model_scores = {
+    "Random Forest": r2_score(y_test, rf_model.predict(X_test)),
+    "XGBoost": r2_score(y_test, xgb_model.predict(X_test)),
+    "Bayesian Ridge": r2_score(y_test, br_model.predict(X_test))
+}
+
+# Store trained models
+trained_models = {
+    "Random Forest": rf_model,
+    "XGBoost": xgb_model,
+    "Bayesian Ridge": br_model
+}
+
+# Sidebar model selector or auto-best
+st.sidebar.markdown("### Select a Model (or leave for Auto Best)")
+user_model_choice = st.sidebar.selectbox("Choose Model", ["Auto Best"] + list(model_scores.keys()))
+
+if user_model_choice == "Auto Best":
+    best_model_name = max(model_scores, key=model_scores.get)
+else:
+    best_model_name = user_model_choice
+
+st.sidebar.success(f"✅ Using: {best_model_name}")
+
+# Form for input
+with st.form("prediction_form"):
     st.markdown("📌 Enter student academic and socio-economic details:")
     age = st.slider("Age", 15, 22, 17)
     Medu = st.slider("Mother's Education (0-4)", 0, 4, 2)
@@ -370,64 +413,49 @@ with st.form("combined_prediction_form"):
     absences = st.slider("Total Absences", 0, 100, 5)
     G1 = st.slider("First Period Grade (G1)", 0, 20, 10)
     G2 = st.slider("Second Period Grade (G2)", 0, 20, 10)
-
     submitted = st.form_submit_button("🎓 Predict & Recommend")
 
 if submitted:
-    input_data = pd.DataFrame([[age, Medu, Fedu, traveltime, studytime, failures, absences, G1, G2]], columns=features)
-    input_scaled = scaler.transform(input_data)
-    G3_pred = models[best_model].predict(input_scaled)[0]
+    input_df = pd.DataFrame([[age, Medu, Fedu, traveltime, studytime, failures, absences, G1, G2]], columns=features)
+    input_scaled = scaler.transform(input_df)
+    model = trained_models[best_model_name]
+    G3_pred = model.predict(input_scaled)[0]
 
-    st.success(f"🎓 Predicted Final Grade (G3): {G3_pred:.2f}")
+    st.success(f"🎯 Predicted Final Grade (G3): {G3_pred:.2f}")
 
-    # 📌 Personalized Academic Recommendations
-    recommendations = []
+    st.markdown("### 🧑‍🏫 Personalized Academic Recommendations")
+    recs = []
 
     if G3_pred < 10:
-        recommendations.append("🔴 **At-Risk Student**: Personalized tutoring sessions needed with focus on weak concepts from G1 & G2.")
+        recs.append("🔴 At-Risk Student: Consider personalized tutoring and learning plans.")
         if failures > 0:
-            recommendations.append("❌ Prior failures detected. Recommend academic counseling and regular progress tracking.")
+            recs.append("❌ Prior failures detected. Academic counseling is recommended.")
         if studytime <= 2:
-            recommendations.append("⏱️ Study time is low. Suggest time management coaching and digital learning planners.")
+            recs.append("📘 Low study time. Encourage time management and productivity techniques.")
         if absences > 10:
-            recommendations.append("🏫 High absenteeism. Engage with guardians and consider blended/remote learning models.")
+            recs.append("🏫 High absenteeism. Parental engagement and hybrid learning options suggested.")
 
     elif G3_pred < 14:
-        recommendations.append("🟡 **Average Performer**: Recommend structured self-paced modules and performance goals.")
-        if studytime <= 2:
-            recommendations.append("📘 Boost study hours using techniques like Pomodoro and spaced repetition.")
+        recs.append("🟡 Average Performer: Promote structured self-learning modules.")
         if absences > 5:
-            recommendations.append("🕒 Reduce missed classes by sending automated alerts and reminders.")
+            recs.append("🕒 Moderate absenteeism. Suggest attendance tracking systems.")
 
     else:
-        recommendations.append("🟢 **High Performer**: Recommend advanced learning paths or gifted programs.")
+        recs.append("🟢 High Performer: Recommend enrichment activities and advanced programs.")
         if studytime > 3:
-            recommendations.append("🚀 Encourage participation in competitions or online MOOCs (Coursera, edX).")
+            recs.append("🚀 Eligible for competitive programs and MOOCs.")
 
-    st.markdown("### 🧑‍🏫 Recommended Actions:")
-    for rec in recommendations:
-        st.info(rec)
+    for r in recs:
+        st.info(r)
 
-    # 📚 AI-Powered Learning Resource Recommender
-    st.markdown("### 📚 Tailored Learning Resources")
-
+    st.markdown("### 📚 Suggested Resources")
     if G3_pred < 10:
-        st.markdown("- [🎥 How to Study Effectively – Science-Based Tips (YouTube)](https://youtu.be/p60rN9JEapg)")
-        st.markdown("- [⏱️ Pomodoro Timer Web Tool](https://pomofocus.io/)")
-        st.markdown("- [📘 Time Management Course – Coursera](https://www.coursera.org/learn/work-smarter-not-harder)")
-        st.markdown("- [📗 Khan Academy – Foundational Skills](https://www.khanacademy.org)")
-        st.markdown("- [🧠 Motivation for Students – TEDx Talk](https://youtu.be/O96fE1E-rf8)")
-
+        st.markdown("- [Time Management Course](https://www.coursera.org/learn/work-smarter-not-harder)")
+        st.markdown("- [Khan Academy](https://www.khanacademy.org)")
     elif G3_pred < 14:
-        st.markdown("- [🎓 Study Skills for High School & College – YouTube](https://youtu.be/CPxSzxylRCI)")
-        st.markdown("- [📈 Focus & Productivity Guide – Todoist Blog](https://blog.todoist.com/productivity-methods/)")
-        st.markdown("- [📚 Self-Paced Learning: Study Smarter](https://www.opencollege.info/self-paced-learning/)")
-
+        st.markdown("- [Focus Techniques - Todoist Blog](https://blog.todoist.com/productivity-methods/)")
     else:
-        st.markdown("- [🏆 Advanced MOOC: edX – Academic Excellence Courses](https://www.edx.org/learn/study-skills)")
-        st.markdown("- [🎖️ Olympiad/Competition Preparation – Learn More](https://artofproblemsolving.com/)")
-        st.markdown("- [🚀 Research Basics for Students – Google Scholar Guide](https://scholar.google.com/)")
-
+        st.markdown("- [Advanced MOOCs on edX](https://www.edx.org/learn/study-skills)")
 
 # 📥 Downloadable Recommendation Report
 st.subheader("6. Downloadable Report")
