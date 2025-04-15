@@ -373,67 +373,31 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 
-st.subheader("🎯 AI-Powered Student Recommendations (No Manual Input)")
+# 📌 AI-Driven Socioeconomic Recommendations
+st.subheader("4. AI-Driven Recommendations for Academic Support")
 
-# Upload CSV
-uploaded_file = st.file_uploader("📂 Upload your student dataset (CSV)", type=["csv"])
-if uploaded_file:
-    df = pd.read_csv(uploaded_file)
+recommendations = []
 
-    # Select features relevant to clustering and recommendations
-    features = ['G1', 'G2', 'G3', 'studytime', 'failures', 'absences', 'Medu', 'Fedu', 'traveltime']
-    df = df.dropna(subset=features)  # Drop rows with missing values
-    X = df[features]
+if corr['Medu'] > 0.2 or corr['Fedu'] > 0.2:
+    recommendations.append("📚 **Parental Education**: Students with better-educated parents (especially mothers) tend to perform better. Promote adult education and family engagement programs.")
 
-    # Standardize the features
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+if corr['failures'] < -0.3:
+    recommendations.append("⏱️ **Failures**: Past failures significantly lower future academic performance. Implement early warning systems, mentoring, and after-school tutoring.")
 
-    # Perform clustering
-    kmeans = KMeans(n_clusters=4, random_state=42)
-    df['Cluster'] = kmeans.fit_predict(X_scaled)
+if corr['studytime'] > 0.2:
+    recommendations.append("📖 **Study Time**: More time spent studying correlates with better grades. Encourage structured study routines and productivity workshops.")
 
-    # 🎨 Visualization: Cluster Avg G3
-    cluster_means = df.groupby('Cluster')['G3'].mean().reset_index()
-    st.bar_chart(cluster_means.set_index('Cluster'))
+if corr['absences'] < -0.2:
+    recommendations.append("🏫 **Absenteeism**: Higher absenteeism negatively impacts performance. Consider attendance incentives and parental counseling.")
 
-    # 📌 Recommendations for each student
-    st.markdown("### 📋 Student-wise Smart Recommendations")
-    recommendations = []
+if corr['traveltime'] < -0.1:
+    recommendations.append("🚌 **Travel Time**: Long commute times reduce study opportunities. Suggest community learning centers or hybrid/online classes.")
 
-    for idx, row in df.iterrows():
-        cluster_avg = df[df['Cluster'] == row['Cluster']][features].mean()
-        rec = []
-
-        if row['absences'] > cluster_avg['absences']:
-            rec.append("📉 High absences – encourage consistent attendance.")
-        if row['failures'] > cluster_avg['failures']:
-            rec.append("📚 Multiple failures – consider mentoring/tutoring.")
-        if row['studytime'] < cluster_avg['studytime']:
-            rec.append("⏱️ Study time below cluster average – suggest study planning.")
-        if row['G3'] < cluster_avg['G3']:
-            rec.append("📛 Final grade below peer average – early intervention may help.")
-        if row['G2'] < row['G1']:
-            rec.append("📉 Grade drop from G1 to G2 – investigate challenges.")
-
-        if rec:
-            recommendations.append({
-                'Student Index': idx,
-                'Cluster': int(row['Cluster']),
-                'Predicted G3': row['G3'],
-                'Recommendations': ' | '.join(rec)
-            })
-
-    # Convert to DataFrame and display
-    rec_df = pd.DataFrame(recommendations)
-    st.dataframe(rec_df)
-
-    # Optional: Downloadable version
-    if not rec_df.empty:
-        csv = rec_df.to_csv(index=False).encode('utf-8')
-        st.download_button("⬇️ Download Recommendations", csv, "student_recommendations.csv", "text/csv")
+if not recommendations:
+    st.warning("No strong actionable insights found. Consider checking more features or using feature engineering.")
 else:
-    st.info("Upload a student dataset to generate recommendations.")
+    for rec in recommendations:
+        st.info(rec)
 
 # 📥 Downloadable Recommendation Report
 st.subheader("6. Downloadable Report")
