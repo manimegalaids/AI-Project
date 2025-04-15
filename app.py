@@ -274,12 +274,39 @@ with tabs[6]:
     ax.set_title("Correlation Matrix of Numeric Features")
     st.pyplot(fig)
 
-# 4. 📊 Model Accuracy Comparison (R² Score for Final Grade Prediction)
-st.subheader("📊 4. Model Accuracy Comparison")
-
+# 📦 Imports
+import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import joblib
+import os
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import BayesianRidge
+from xgboost import XGBRegressor
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import r2_score
 
-# 🔁 Function to train and evaluate models
+# 🧠 Title
+st.subheader("📊 4. Model Accuracy Comparison (R² Score for Final Grade Prediction)")
+
+# 📥 Load and prepare data
+df_mat = pd.read_csv("student-mat.csv", sep=';')
+df_por = pd.read_csv("student-por.csv", sep=';')
+df = pd.concat([df_mat, df_por]).drop_duplicates().reset_index(drop=True)
+
+features = ['age', 'Medu', 'Fedu', 'traveltime', 'studytime', 'failures', 'absences', 'G1', 'G2']
+target = 'G3'
+
+X = df[features]
+y = df[target]
+
+scaler = MinMaxScaler()
+X_scaled = scaler.fit_transform(X)
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+
+# 🔁 Train models
 def train_models(X_train, X_test, y_train, y_test):
     models = {
         "Random Forest": RandomForestRegressor(random_state=42),
@@ -296,23 +323,25 @@ def train_models(X_train, X_test, y_train, y_test):
         trained_models[name] = model
     return scores, trained_models
 
-# ⚙️ Prepare Data
-features = ['age', 'Medu', 'Fedu', 'traveltime', 'studytime', 'failures', 'absences', 'G1', 'G2']
-X = df[features]
-y = df['G3']
+# ✅ Check for model cache
+if os.path.exists("best_model.pkl"):
+    st.info("🧠 Loading previously saved model...")
+    best_model = joblib.load("best_model.pkl")
+    scores, trained_models = train_models(X_train, X_test, y_train, y_test)
+    best_model_name = max(scores, key=scores.get)
+    best_score = scores[best_model_name]
+else:
+    # 🚀 Train & Evaluate
+    scores, trained_models = train_models(X_train, X_test, y_train, y_test)
+    best_model_name = max(scores, key=scores.get)
+    best_score = scores[best_model_name]
+    
+    # 💾 Save best model
+    joblib.dump(trained_models[best_model_name], "best_model.pkl")
+    best_model = trained_models[best_model_name]
+    st.success("✅ Best model saved as 'best_model.pkl'")
 
-scaler = MinMaxScaler()
-X_scaled = scaler.fit_transform(X)
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
-
-# 📈 Train and get scores
-scores, trained_models = train_models(X_train, X_test, y_train, y_test)
-
-# 🔍 Best model detection
-best_model_name = max(scores, key=scores.get)
-best_score = scores[best_model_name]
-
-# 📊 Plot Horizontal Bar Chart
+# 📈 Visual: R² Scores
 fig, ax = plt.subplots(figsize=(8, 4))
 colors = ['green' if m == best_model_name else 'skyblue' for m in scores.keys()]
 bars = ax.barh(list(scores.keys()), list(scores.values()), color=colors)
@@ -324,16 +353,15 @@ for bar in bars:
 ax.set_xlim(0, 1)
 ax.set_xlabel("R² Score")
 ax.set_title("🔍 Model Comparison: R² Score for Predicting Final Grade (G3)")
-
 st.pyplot(fig)
 
-# ✅ Best model output
+# 🎯 Best Model
 st.success(f"🏆 Best Model: **{best_model_name}** with R² Score of **{best_score:.2f}**")
 
-# 📌 Optional: Feature importance if applicable
+# 📌 Feature Importance (if applicable)
 if best_model_name == "Random Forest":
-    st.markdown("### 📌 Top Contributing Features (Random Forest)")
-    feature_imp = trained_models[best_model_name].feature_importances_
+    st.markdown("### 🔍 Feature Importance from Random Forest")
+    feature_imp = best_model.feature_importances_
     importance_df = pd.DataFrame({
         'Feature': features,
         'Importance': feature_imp
@@ -343,22 +371,6 @@ if best_model_name == "Random Forest":
     sns.barplot(data=importance_df, x='Importance', y='Feature', palette='crest', ax=ax2)
     ax2.set_title("Feature Importance from Random Forest")
     st.pyplot(fig2)
-
-# --- Load your dataset and model ---
-df_mat = pd.read_csv("student-mat.csv", sep=';')
-df_por = pd.read_csv("student-por.csv", sep=';') # ✅ Use your cleaned dataset
-best_model = joblib.load("best_model.pkl")     # ✅ Your trained model
-
-# --- Feature columns used for prediction and clustering ---
-input_features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'traveltime', 'G1', 'G2']
-
-# --- Load your dataset and model ---
-df_mat = pd.read_csv("student-mat.csv", sep=';')
-df_por = pd.read_csv("student-por.csv", sep=';')
-best_model = joblib.load("best_model.pkl")     # ✅ Your trained model
-
-# --- Feature columns used for prediction and clustering ---
-input_features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'traveltime', 'G1', 'G2']
 
 from fpdf import FPDF
 import base64
