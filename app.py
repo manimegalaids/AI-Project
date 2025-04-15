@@ -356,32 +356,56 @@ best_model = joblib.load("best_model.pkl")     # ✅ Your trained model
 # --- Feature columns used for prediction and clustering ---
 input_features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'traveltime', 'G1', 'G2']
 
+# 🧠 Intelligent Academic Support Generator Based on Feature Impact
+st.subheader("🎯5.  Personalized AI Recommendations Based on Your Data")
 
-# 📌 AI-Driven Socioeconomic Recommendations
-st.subheader("4. AI-Driven Recommendations for Academic Support")
+# 📌 Use the best model's feature importance
+feature_imp = trained_models[best_model_name].feature_importances_
+importance_df = pd.DataFrame({'Feature': features, 'Importance': feature_imp})
+top_features = importance_df.sort_values(by="Importance", ascending=False)['Feature'].tolist()
 
+# ✏️ Input current student record to analyze
+st.markdown("#### 👤 Enter Student Information to Generate Smart Recommendations")
+
+user_input = {}
+for feat in features:
+    min_val = float(df[feat].min())
+    max_val = float(df[feat].max())
+    default = float(df[feat].median())
+    user_input[feat] = st.slider(f"{feat}", min_val, max_val, default)
+
+# 🔍 Analyze critical weaknesses based on feature thresholds
 recommendations = []
 
-if corr['Medu'] > 0.2 or corr['Fedu'] > 0.2:
-    recommendations.append("📚 **Parental Education**: Students with better-educated parents (especially mothers) tend to perform better. Promote adult education and family engagement programs.")
+if user_input['Medu'] <= 1 or user_input['Fedu'] <= 1:
+    recommendations.append("🧑‍🏫 **Parental Education** is low — Encourage parent involvement programs, literacy outreach, and mentorship.")
 
-if corr['failures'] < -0.3:
-    recommendations.append("⏱️ **Failures**: Past failures significantly lower future academic performance. Implement early warning systems, mentoring, and after-school tutoring.")
+if user_input['failures'] > 0:
+    recommendations.append("❌ **Past Failures** — Suggest early intervention, targeted tutoring, and mentor check-ins.")
 
-if corr['studytime'] > 0.2:
-    recommendations.append("📖 **Study Time**: More time spent studying correlates with better grades. Encourage structured study routines and productivity workshops.")
+if user_input['traveltime'] >= 3:
+    recommendations.append("🚌 **Long Travel Time** — Recommend hybrid/online learning access or local learning centers.")
 
-if corr['absences'] < -0.2:
-    recommendations.append("🏫 **Absenteeism**: Higher absenteeism negatively impacts performance. Consider attendance incentives and parental counseling.")
+if user_input['G1'] < 10 or user_input['G2'] < 10:
+    recommendations.append("📉 **Low G1 or G2 Scores** — Provide remedial support, frequent feedback, and study plan customization.")
 
-if corr['traveltime'] < -0.1:
-    recommendations.append("🚌 **Travel Time**: Long commute times reduce study opportunities. Suggest community learning centers or hybrid/online classes.")
+if user_input['absences'] > df['absences'].mean():
+    recommendations.append("📆 **High Absences** — Recommend attendance incentives and student support follow-ups.")
 
-if not recommendations:
-    st.warning("No strong actionable insights found. Consider checking more features or using feature engineering.")
-else:
+# 🧾 Show dynamic recommendations
+if recommendations:
+    st.markdown("### 🎓 AI-Powered Targeted Recommendations")
     for rec in recommendations:
         st.info(rec)
+else:
+    st.success("✅ No major academic risks detected. Maintain current strategies and track performance!")
+
+# 🧠 Predict final grade with the best model
+input_array = np.array([user_input[feat] for feat in features]).reshape(1, -1)
+scaled_input = scaler.transform(input_array)
+predicted_grade = trained_models[best_model_name].predict(scaled_input)[0]
+st.markdown(f"### 📘 Predicted Final Grade (G3): **{predicted_grade:.2f}**")
+
 
 # 📥 Downloadable Recommendation Report
 st.subheader("6. Downloadable Report")
