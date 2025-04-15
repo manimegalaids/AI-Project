@@ -357,7 +357,7 @@ best_model = joblib.load("best_model.pkl")     # ✅ Your trained model
 # --- Feature columns used for prediction and clustering ---
 input_features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'traveltime', 'G1', 'G2']
 # 🎯 Predict Final Grade + Recommend Learning Path
-st.subheader("7. Predict Final Grade & Get Personalized Learning Path")
+st.subheader("5. Predict Final Grade & Get Personalized Learning Path")
 
 with st.form("combined_prediction_form"):
     st.markdown("📌 Enter student academic and socio-economic details:")
