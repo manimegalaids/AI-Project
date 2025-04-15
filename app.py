@@ -363,8 +363,8 @@ input_features = ['studytime', 'failures', 'absences', 'Medu', 'Fedu', 'travelti
 from fpdf import FPDF
 import base64
 
-st.set_page_config(layout="wide")
-st.subheader("📌 AI-Powered Recommendations Without User Input")
+
+st.subheader("📌5. AI-Powered Recommendations Without User Input")
 
 # Load and merge data
 mat_df = pd.read_csv("student-mat.csv")
