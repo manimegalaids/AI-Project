@@ -11,8 +11,6 @@ import torch
 import datetime
 from fpdf import FPDF
 import base64
-import altair as alt
-import joblib
 import plotly.express as px
 import plotly.graph_objects as go
 from sklearn.model_selection import train_test_split
@@ -24,7 +22,6 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import train_test_split
 
 # 🌐 Page Config
 st.set_page_config(page_title="AI Academic Dashboard", layout="wide")
@@ -274,63 +271,123 @@ with tabs[6]:
     sns.heatmap(df.corr(numeric_only=True), annot=True, cmap='coolwarm', ax=ax)
     ax.set_title("Correlation Matrix of Numeric Features")
     st.pyplot(fig)
-
-
 # 4. 📊 Model Accuracy Comparison (R² Score for Final Grade Prediction)
+st.subheader("📊 4. Model Accuracy Comparison")
 
-# 🧠 Define X and y
-target_column = "G3"  # replace with your actual target if different
-X = df.drop(columns=[target_column])
-y = df[target_column]
-
-# ✂️ Train-test split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# 🚀 Train models and evaluate R² scores
-@st.cache_resource
-def train_and_save_best_model(X_train, X_test, y_train, y_test):
+# 🔁 Function to train and evaluate models
+def train_models(X_train, X_test, y_train, y_test):
     models = {
-        "Random Forest": RandomForestRegressor(n_estimators=100, random_state=42),
-        "XGBoost": XGBRegressor(n_estimators=100, learning_rate=0.1, random_state=42),
+        "Random Forest": RandomForestRegressor(random_state=42),
+        "XGBoost": XGBRegressor(random_state=42),
         "Bayesian Ridge": BayesianRidge()
     }
-
-    r2_scores = {}
+    scores = {}
     trained_models = {}
-
     for name, model in models.items():
         model.fit(X_train, y_train)
-        y_pred = model.predict(X_test)
-        r2 = r2_score(y_test, y_pred)
-        r2_scores[name] = round(r2, 3)
+        preds = model.predict(X_test)
+        score = r2_score(y_test, preds)
+        scores[name] = score
         trained_models[name] = model
+    return scores, trained_models
 
-    # 🎯 Save best model
-    best_model_name = max(r2_scores, key=r2_scores.get)
-    best_model = trained_models[best_model_name]
-    joblib.dump(best_model, 'best_model.pkl')  # Save best model locally
+# ⚙️ Prepare Data
+features = ['age', 'Medu', 'Fedu', 'traveltime', 'studytime', 'failures', 'absences', 'G1', 'G2']
+X = df[features]
+y = df['G3']
 
-    return r2_scores, best_model_name
+scaler = MinMaxScaler()
+X_scaled = scaler.fit_transform(X)
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 
-# 🔄 Call function
-st.markdown("### 📊 4. Model Accuracy Comparison")
-r2_scores, best_model_name = train_and_save_best_model(X_train, X_test, y_train, y_test)
+# 📈 Train and get scores
+scores, trained_models = train_models(X_train, X_test, y_train, y_test)
 
-# 📈 Show bar chart
-scores_df = pd.DataFrame(list(r2_scores.items()), columns=['Model', 'R² Score'])
-bar_chart = alt.Chart(scores_df).mark_bar().encode(
-    x=alt.X('Model', sort='-y'),
-    y='R² Score',
-    color='Model'
-).properties(width=600, height=400)
-st.altair_chart(bar_chart)
+# 🔍 Best model detection
+best_model_name = max(scores, key=scores.get)
+best_score = scores[best_model_name]
 
-# 📋 Expandable score table
-with st.expander("📋 Show R² Scores Table"):
-    st.dataframe(scores_df.style.highlight_max(axis=0))
+# 📊 Plot Horizontal Bar Chart
+fig, ax = plt.subplots(figsize=(8, 4))
+colors = ['green' if m == best_model_name else 'skyblue' for m in scores.keys()]
+bars = ax.barh(list(scores.keys()), list(scores.values()), color=colors)
 
-# ✅ Best model name
-st.success(f"✅ Best model: **{best_model_name}** saved as `best_model.pkl`.")
+for bar in bars:
+    ax.text(bar.get_width() + 0.01, bar.get_y() + bar.get_height()/2,
+            f'{bar.get_width():.2f}', va='center', fontsize=10)
+
+ax.set_xlim(0, 1)
+ax.set_xlabel("R² Score")
+ax.set_title("🔍 Model Comparison: R² Score for Predicting Final Grade (G3)")
+
+st.pyplot(fig)
+
+# ✅ Best model output
+st.success(f"🏆 Best Model: **{best_model_name}** with R² Score of **{best_score:.2f}**")
+
+# 📌 Optional: Feature importance if applicable
+if best_model_name == "Random Forest":
+    st.markdown("### 📌 Top Contributing Features (Random Forest)")
+    feature_imp = trained_models[best_model_name].feature_importances_
+    importance_df = pd.DataFrame({
+        'Feature': features,
+        'Importance': feature_imp
+    }).sort_values(by="Importance", ascending=False)
+
+    fig2, ax2 = plt.subplots()
+    sns.barplot(data=importance_df, x='Importance', y='Feature', palette='crest', ax=ax2)
+    ax2.set_title("Feature Importance from Random Forest")
+    st.pyplot(fig2)
+
+# Load dataset
+df_mat = pd.read_csv("student-mat.csv", sep=';')
+df_por = pd.read_csv("student-por.csv", sep=';')
+df = pd.concat([df_mat, df_por], axis=0).drop_duplicates().reset_index(drop=True)
+
+# Feature selection
+features = ['age', 'Medu', 'Fedu', 'traveltime', 'studytime', 'failures', 'absences', 'G1', 'G2']
+target = 'G3'
+X = df[features]
+y = df[target]
+
+# Normalize features
+scaler = MinMaxScaler()
+X_scaled = scaler.fit_transform(X)
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+
+# Train models
+rf_model = RandomForestRegressor(random_state=42)
+xgb_model = XGBRegressor(random_state=42)
+br_model = BayesianRidge()
+
+rf_model.fit(X_train, y_train)
+xgb_model.fit(X_train, y_train)
+br_model.fit(X_train, y_train)
+
+# Evaluate
+model_scores = {
+    "Random Forest": r2_score(y_test, rf_model.predict(X_test)),
+    "XGBoost": r2_score(y_test, xgb_model.predict(X_test)),
+    "Bayesian Ridge": r2_score(y_test, br_model.predict(X_test))
+}
+
+# Store trained models
+trained_models = {
+    "Random Forest": rf_model,
+    "XGBoost": xgb_model,
+    "Bayesian Ridge": br_model
+}
+
+# Sidebar model selector or auto-best
+st.sidebar.markdown("### Select a Model (or leave for Auto Best)")
+user_model_choice = st.sidebar.selectbox("Choose Model", ["Auto Best"] + list(model_scores.keys()))
+
+if user_model_choice == "Auto Best":
+    best_model_name = max(model_scores, key=model_scores.get)
+else:
+    best_model_name = user_model_choice
+
+st.sidebar.success(f"✅ Using: {best_model_name}")
 
 st.subheader("📌 5. Smart AI-Powered Academic Recommendations")
 st.markdown("Get actionable, real-time guidance based on socio-academic factors and student-specific predictions.")
