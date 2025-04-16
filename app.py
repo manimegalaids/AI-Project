@@ -278,7 +278,12 @@ with tabs[6]:
 
 # 4. 📊 Model Accuracy Comparison (R² Score for Final Grade Prediction)
 
-# 🧠 Ensure X, y are defined before this
+# 🧠 Define X and y
+target_column = "G3"  # replace with your actual target if different
+X = df.drop(columns=[target_column])
+y = df[target_column]
+
+# ✂️ Train-test split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # 🚀 Train models and evaluate R² scores
@@ -300,10 +305,10 @@ def train_and_save_best_model(X_train, X_test, y_train, y_test):
         r2_scores[name] = round(r2, 3)
         trained_models[name] = model
 
-    # 🎯 Find and save the best model
+    # 🎯 Save best model
     best_model_name = max(r2_scores, key=r2_scores.get)
     best_model = trained_models[best_model_name]
-    joblib.dump(best_model, 'best_model.pkl')  # Save the model
+    joblib.dump(best_model, 'best_model.pkl')  # Save best model locally
 
     return r2_scores, best_model_name
 
@@ -311,7 +316,7 @@ def train_and_save_best_model(X_train, X_test, y_train, y_test):
 st.markdown("### 📊 4. Model Accuracy Comparison")
 r2_scores, best_model_name = train_and_save_best_model(X_train, X_test, y_train, y_test)
 
-# 📈 Display chart
+# 📈 Show bar chart
 scores_df = pd.DataFrame(list(r2_scores.items()), columns=['Model', 'R² Score'])
 bar_chart = alt.Chart(scores_df).mark_bar().encode(
     x=alt.X('Model', sort='-y'),
@@ -320,11 +325,11 @@ bar_chart = alt.Chart(scores_df).mark_bar().encode(
 ).properties(width=600, height=400)
 st.altair_chart(bar_chart)
 
-# 📝 Table and saved model display
+# 📋 Expandable score table
 with st.expander("📋 Show R² Scores Table"):
     st.dataframe(scores_df.style.highlight_max(axis=0))
 
-# ✅ Show best model info
+# ✅ Best model name
 st.success(f"✅ Best model: **{best_model_name}** saved as `best_model.pkl`.")
 
 st.subheader("📌 5. Smart AI-Powered Academic Recommendations")
