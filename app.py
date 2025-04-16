@@ -21,6 +21,8 @@ from sklearn.metrics import r2_score
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import GridSearchCV
+from catboost import CatBoostRegressor
 
 # 🌐 Page Config
 st.set_page_config(page_title="AI Academic Dashboard", layout="wide")
@@ -275,120 +277,47 @@ with tabs[6]:
 # 4. 📊 Model Accuracy Comparison (R² Score for Final Grade Prediction)
 st.subheader("📊 4. Model Accuracy Comparison")
 
-# 🔁 Function to train and evaluate models
+# 🔁 Improved train_models with hyperparameter tuning
 def train_models(X_train, X_test, y_train, y_test):
-    models = {
-        "Random Forest": RandomForestRegressor(random_state=42),
-        "XGBoost": XGBRegressor(random_state=42),
-        "Bayesian Ridge": BayesianRidge()
-    }
     scores = {}
     trained_models = {}
-    for name, model in models.items():
-        model.fit(X_train, y_train)
-        preds = model.predict(X_test)
-        score = r2_score(y_test, preds)
-        scores[name] = score
-        trained_models[name] = model
+
+    # 🟢 Random Forest with GridSearch
+    rf_params = {
+        'n_estimators': [100, 200],
+        'max_depth': [10, 20, None],
+        'max_features': ['sqrt']
+    }
+    rf_grid = GridSearchCV(RandomForestRegressor(random_state=42), rf_params, cv=3, scoring='r2', n_jobs=-1)
+    rf_grid.fit(X_train, y_train)
+    rf_best = rf_grid.best_estimator_
+    rf_pred = rf_best.predict(X_test)
+    scores['Random Forest'] = r2_score(y_test, rf_pred)
+    trained_models['Random Forest'] = rf_best
+
+    # 🔶 XGBoost
+    xgb = XGBRegressor(n_estimators=200, max_depth=5, learning_rate=0.1, random_state=42)
+    xgb.fit(X_train, y_train)
+    xgb_pred = xgb.predict(X_test)
+    scores['XGBoost'] = r2_score(y_test, xgb_pred)
+    trained_models['XGBoost'] = xgb
+
+    # 🔵 Bayesian Ridge
+    bayesian = BayesianRidge()
+    bayesian.fit(X_train, y_train)
+    bayesian_pred = bayesian.predict(X_test)
+    scores['Bayesian Ridge'] = r2_score(y_test, bayesian_pred)
+    trained_models['Bayesian Ridge'] = bayesian
+
+    # 🟣 CatBoost (Optional, no scaling needed)
+    cat = CatBoostRegressor(iterations=200, learning_rate=0.1, depth=6, verbose=0, random_state=42)
+    cat.fit(X_train, y_train)
+    cat_pred = cat.predict(X_test)
+    scores['CatBoost'] = r2_score(y_test, cat_pred)
+    trained_models['CatBoost'] = cat
+
     return scores, trained_models
 
-# ⚙️ Prepare Data
-features = ['age', 'Medu', 'Fedu', 'traveltime', 'studytime', 'failures', 'absences', 'G1', 'G2']
-X = df[features]
-y = df['G3']
-
-scaler = MinMaxScaler()
-X_scaled = scaler.fit_transform(X)
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
-
-# 📈 Train and get scores
-scores, trained_models = train_models(X_train, X_test, y_train, y_test)
-
-# 🔍 Best model detection
-best_model_name = max(scores, key=scores.get)
-best_score = scores[best_model_name]
-
-# 📊 Plot Horizontal Bar Chart
-fig, ax = plt.subplots(figsize=(8, 4))
-colors = ['green' if m == best_model_name else 'skyblue' for m in scores.keys()]
-bars = ax.barh(list(scores.keys()), list(scores.values()), color=colors)
-
-for bar in bars:
-    ax.text(bar.get_width() + 0.01, bar.get_y() + bar.get_height()/2,
-            f'{bar.get_width():.2f}', va='center', fontsize=10)
-
-ax.set_xlim(0, 1)
-ax.set_xlabel("R² Score")
-ax.set_title("🔍 Model Comparison: R² Score for Predicting Final Grade (G3)")
-
-st.pyplot(fig)
-
-# ✅ Best model output
-st.success(f"🏆 Best Model: **{best_model_name}** with R² Score of **{best_score:.2f}**")
-
-# 📌 Optional: Feature importance if applicable
-if best_model_name == "Random Forest":
-    st.markdown("### 📌 Top Contributing Features (Random Forest)")
-    feature_imp = trained_models[best_model_name].feature_importances_
-    importance_df = pd.DataFrame({
-        'Feature': features,
-        'Importance': feature_imp
-    }).sort_values(by="Importance", ascending=False)
-
-    fig2, ax2 = plt.subplots()
-    sns.barplot(data=importance_df, x='Importance', y='Feature', palette='crest', ax=ax2)
-    ax2.set_title("Feature Importance from Random Forest")
-    st.pyplot(fig2)
-
-# Load dataset
-df_mat = pd.read_csv("student-mat.csv", sep=';')
-df_por = pd.read_csv("student-por.csv", sep=';')
-df = pd.concat([df_mat, df_por], axis=0).drop_duplicates().reset_index(drop=True)
-
-# Feature selection
-features = ['age', 'Medu', 'Fedu', 'traveltime', 'studytime', 'failures', 'absences', 'G1', 'G2']
-target = 'G3'
-X = df[features]
-y = df[target]
-
-# Normalize features
-scaler = MinMaxScaler()
-X_scaled = scaler.fit_transform(X)
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
-
-# Train models
-rf_model = RandomForestRegressor(random_state=42)
-xgb_model = XGBRegressor(random_state=42)
-br_model = BayesianRidge()
-
-rf_model.fit(X_train, y_train)
-xgb_model.fit(X_train, y_train)
-br_model.fit(X_train, y_train)
-
-# Evaluate
-model_scores = {
-    "Random Forest": r2_score(y_test, rf_model.predict(X_test)),
-    "XGBoost": r2_score(y_test, xgb_model.predict(X_test)),
-    "Bayesian Ridge": r2_score(y_test, br_model.predict(X_test))
-}
-
-# Store trained models
-trained_models = {
-    "Random Forest": rf_model,
-    "XGBoost": xgb_model,
-    "Bayesian Ridge": br_model
-}
-
-# Sidebar model selector or auto-best
-st.sidebar.markdown("### Select a Model (or leave for Auto Best)")
-user_model_choice = st.sidebar.selectbox("Choose Model", ["Auto Best"] + list(model_scores.keys()))
-
-if user_model_choice == "Auto Best":
-    best_model_name = max(model_scores, key=model_scores.get)
-else:
-    best_model_name = user_model_choice
-
-st.sidebar.success(f"✅ Using: {best_model_name}")
 
 st.subheader("📌 5. Smart AI-Powered Academic Recommendations")
 st.markdown("Get actionable, real-time guidance based on socio-academic factors and student-specific predictions.")
