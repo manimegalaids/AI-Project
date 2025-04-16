@@ -11,6 +11,8 @@ import torch
 import datetime
 from fpdf import FPDF
 import base64
+import altair as alt
+import joblib
 import plotly.express as px
 import plotly.graph_objects as go
 from sklearn.model_selection import train_test_split
@@ -22,7 +24,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV
-from catboost import CatBoostRegressor
+from sklearn.model_selection import train_test_split
 
 # 🌐 Page Config
 st.set_page_config(page_title="AI Academic Dashboard", layout="wide")
@@ -275,49 +277,55 @@ with tabs[6]:
 
 
 # 4. 📊 Model Accuracy Comparison (R² Score for Final Grade Prediction)
-st.subheader("📊 4. Model Accuracy Comparison")
 
-# 🔁 Improved train_models with hyperparameter tuning
-def train_models(X_train, X_test, y_train, y_test):
-    scores = {}
+# 🧠 Ensure X, y are defined before this
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# 🚀 Train models and evaluate R² scores
+@st.cache_resource
+def train_and_save_best_model(X_train, X_test, y_train, y_test):
+    models = {
+        "Random Forest": RandomForestRegressor(n_estimators=100, random_state=42),
+        "XGBoost": XGBRegressor(n_estimators=100, learning_rate=0.1, random_state=42),
+        "Bayesian Ridge": BayesianRidge()
+    }
+
+    r2_scores = {}
     trained_models = {}
 
-    # 🟢 Random Forest with GridSearch
-    rf_params = {
-        'n_estimators': [100, 200],
-        'max_depth': [10, 20, None],
-        'max_features': ['sqrt']
-    }
-    rf_grid = GridSearchCV(RandomForestRegressor(random_state=42), rf_params, cv=3, scoring='r2', n_jobs=-1)
-    rf_grid.fit(X_train, y_train)
-    rf_best = rf_grid.best_estimator_
-    rf_pred = rf_best.predict(X_test)
-    scores['Random Forest'] = r2_score(y_test, rf_pred)
-    trained_models['Random Forest'] = rf_best
+    for name, model in models.items():
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        r2 = r2_score(y_test, y_pred)
+        r2_scores[name] = round(r2, 3)
+        trained_models[name] = model
 
-    # 🔶 XGBoost
-    xgb = XGBRegressor(n_estimators=200, max_depth=5, learning_rate=0.1, random_state=42)
-    xgb.fit(X_train, y_train)
-    xgb_pred = xgb.predict(X_test)
-    scores['XGBoost'] = r2_score(y_test, xgb_pred)
-    trained_models['XGBoost'] = xgb
+    # 🎯 Find and save the best model
+    best_model_name = max(r2_scores, key=r2_scores.get)
+    best_model = trained_models[best_model_name]
+    joblib.dump(best_model, 'best_model.pkl')  # Save the model
 
-    # 🔵 Bayesian Ridge
-    bayesian = BayesianRidge()
-    bayesian.fit(X_train, y_train)
-    bayesian_pred = bayesian.predict(X_test)
-    scores['Bayesian Ridge'] = r2_score(y_test, bayesian_pred)
-    trained_models['Bayesian Ridge'] = bayesian
+    return r2_scores, best_model_name
 
-    # 🟣 CatBoost (Optional, no scaling needed)
-    cat = CatBoostRegressor(iterations=200, learning_rate=0.1, depth=6, verbose=0, random_state=42)
-    cat.fit(X_train, y_train)
-    cat_pred = cat.predict(X_test)
-    scores['CatBoost'] = r2_score(y_test, cat_pred)
-    trained_models['CatBoost'] = cat
+# 🔄 Call function
+st.markdown("### 📊 4. Model Accuracy Comparison")
+r2_scores, best_model_name = train_and_save_best_model(X_train, X_test, y_train, y_test)
 
-    return scores, trained_models
+# 📈 Display chart
+scores_df = pd.DataFrame(list(r2_scores.items()), columns=['Model', 'R² Score'])
+bar_chart = alt.Chart(scores_df).mark_bar().encode(
+    x=alt.X('Model', sort='-y'),
+    y='R² Score',
+    color='Model'
+).properties(width=600, height=400)
+st.altair_chart(bar_chart)
 
+# 📝 Table and saved model display
+with st.expander("📋 Show R² Scores Table"):
+    st.dataframe(scores_df.style.highlight_max(axis=0))
+
+# ✅ Show best model info
+st.success(f"✅ Best model: **{best_model_name}** saved as `best_model.pkl`.")
 
 st.subheader("📌 5. Smart AI-Powered Academic Recommendations")
 st.markdown("Get actionable, real-time guidance based on socio-academic factors and student-specific predictions.")
